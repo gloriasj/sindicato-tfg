@@ -1,0 +1,49 @@
+/* ==========================================================
+   index.css - Estilos globales y fuente
+   ==========================================================
+   Importa la fuente Inter desde Google Fonts (la usa GitHub,
+   Vercel, Notion y la mayoría de SaaS modernos por su altísima
+   legibilidad en pantallas).
+
+   Define un par de microajustes de scroll y selección que
+   se notan poco pero suman calidad percibida.
+   ========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Segoe UI', Roboto, sans-serif;
+  background-color: #f7f8fb;
+  color: #11192c;
+}
+
+/* Scrollbar más discreta y moderna */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(17, 25, 44, 0.15);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 25, 44, 0.25);
+}
+
+/* Color del marcado de selección con la paleta del proyecto */
+::selection {
+  background-color: rgba(241, 136, 13, 0.20);
+  color: #11192c;
+}

@@ -1,7 +1,7 @@
 // src/components/Layout.jsx
 // -------------------------------------------------------
 // Layout principal con menú lateral, barra superior y
-// confirmación al cerrar sesión.
+// confirmación al cerrar sesión. Ahora con logo SVG.
 // -------------------------------------------------------
 
 import { useState } from 'react';
@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from './DialogoConfirmacion';
+import Logo from './Logo';
 
 const ANCHO_DRAWER = 240;
 
@@ -58,13 +59,9 @@ export default function Layout() {
 
   const contenidoDrawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Logo arriba */}
       <Box sx={{ p: 2.5 }}>
-        <Typography variant="h6" fontWeight={700} color="primary.main">
-          Portal Sindical
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Gestión de afiliados
-        </Typography>
+        <Logo size="sm" />
       </Box>
 
       <Divider />
@@ -76,7 +73,7 @@ export default function Layout() {
               selected={location.pathname.startsWith(opcion.ruta)}
               onClick={() => handleNavegar(opcion.ruta)}
               sx={{
-                mx: 1, borderRadius: 1,
+                mx: 1, borderRadius: 1.5,
                 '&.Mui-selected': {
                   bgcolor: 'primary.main',
                   color: 'white',
@@ -123,7 +120,7 @@ export default function Layout() {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f3f6fb' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar
         position="fixed"
         color="default"
@@ -132,15 +129,16 @@ export default function Layout() {
           display: { md: 'none' },
           borderBottom: 1,
           borderColor: 'divider',
+          bgcolor: 'background.paper',
         }}
       >
         <Toolbar>
           <IconButton edge="start" onClick={() => setDrawerAbierto(true)}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ ml: 1 }}>
-            Portal Sindical
-          </Typography>
+          <Box sx={{ ml: 1 }}>
+            <Logo size="sm" />
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -184,7 +182,6 @@ export default function Layout() {
         <Outlet />
       </Box>
 
-      {/* Diálogo de confirmación de cierre de sesión */}
       <DialogoConfirmacion
         abierto={confirmarLogout}
         titulo="Cerrar sesión"

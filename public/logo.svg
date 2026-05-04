@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Escudo de fondo -->
+  <path d="M32 4L8 12v16c0 14 10 24 24 32 14-8 24-18 24-32V12L32 4z"
+        fill="#283d61"/>
+
+  <!-- Resplandor sutil interior -->
+  <path d="M32 8L12 14.5v13.5c0 12 8 21 20 27 12-6 20-15 20-27V14.5L32 8z"
+        fill="#3f5b8a" opacity="0.3"/>
+
+  <!-- Balanza: barra horizontal -->
+  <line x1="20" y1="28" x2="44" y2="28" stroke="#f1880d" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Balanza: pilar central -->
+  <line x1="32" y1="22" x2="32" y2="44" stroke="#f1880d" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Balanza: nudo superior -->
+  <circle cx="32" cy="22" r="2" fill="#f1880d"/>
+
+  <!-- Cuerdas izquierda -->
+  <line x1="22" y1="28" x2="22" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="22" y1="28" x2="18" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="22" y1="28" x2="26" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Platillo izquierda -->
+  <path d="M16 33h12c0 3-3 5-6 5s-6-2-6-5z" fill="#f9c34e" stroke="#f1880d" stroke-width="1"/>
+
+  <!-- Cuerdas derecha -->
+  <line x1="42" y1="28" x2="42" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="42" y1="28" x2="38" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="42" y1="28" x2="46" y2="33" stroke="#f1880d" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Platillo derecha -->
+  <path d="M36 33h12c0 3-3 5-6 5s-6-2-6-5z" fill="#f9c34e" stroke="#f1880d" stroke-width="1"/>
+
+  <!-- Base de la balanza -->
+  <rect x="29" y="44" width="6" height="2" rx="1" fill="#f1880d"/>
+  <rect x="26" y="46" width="12" height="2" rx="1" fill="#f1880d"/>
+</svg>
