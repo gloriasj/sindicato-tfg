@@ -1,9 +1,8 @@
 // src/pages/Afiliados.jsx
 // -------------------------------------------------------
-// Listado de afiliados al sindicato.
-// Permite buscar por nombre/DNI/email, filtrar por sector
-// y por estado (activo/inactivo), y entrar en cada uno
-// para editar o dar de baja.
+// Listado de afiliados con búsqueda, filtros, paginación,
+// exportación a CSV y enlace al detalle al hacer clic
+// sobre el nombre de cada afiliado.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -12,7 +11,7 @@ import {
   Box, Container, Typography, Button, TextField, MenuItem,
   Stack, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Chip, Tooltip, InputAdornment,
-  CircularProgress, Alert, TablePagination,
+  CircularProgress, Alert, TablePagination, Link as MuiLink,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -20,14 +19,15 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   PersonOff as PersonOffIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { exportarCSV } from '../lib/exportarCSV';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
 export default function Afiliados() {
   const navigate = useNavigate();
 
-  // ---- Estado ----
   const [afiliados, setAfiliados]   = useState([]);
   const [sectores, setSectores]     = useState([]);
   const [busqueda, setBusqueda]     = useState('');
@@ -38,29 +38,21 @@ export default function Afiliados() {
   const [cargando, setCargando]   = useState(true);
   const [error, setError]         = useState(null);
 
-  // Diálogo de confirmación de borrado
-  const [aBorrar, setABorrar] = useState(null);
+  const [aBorrar, setABorrar]   = useState(null);
   const [borrando, setBorrando] = useState(false);
 
-  // ---- Carga inicial ----
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  useEffect(() => { cargarDatos(); }, []);
 
   async function cargarDatos() {
     setCargando(true);
     setError(null);
 
-    // Cargar afiliados con su sector (JOIN automático)
     const [afilRes, sectRes] = await Promise.all([
       supabase
         .from('afiliados')
         .select('*, sector:sectores(id, nombre)')
         .order('apellidos', { ascending: true }),
-      supabase
-        .from('sectores')
-        .select('*')
-        .order('nombre'),
+      supabase.from('sectores').select('*').order('nombre'),
     ]);
 
     if (afilRes.error) {
@@ -68,18 +60,13 @@ export default function Afiliados() {
     } else {
       setAfiliados(afilRes.data ?? []);
     }
-
-    if (!sectRes.error) {
-      setSectores(sectRes.data ?? []);
-    }
+    if (!sectRes.error) setSectores(sectRes.data ?? []);
 
     setCargando(false);
   }
 
-  // ---- Filtrado en cliente ----
   const afiliadosFiltrados = useMemo(() => {
     return afiliados.filter((a) => {
-      // Filtro por texto
       if (busqueda) {
         const t = busqueda.toLowerCase();
         const coincide =
@@ -89,27 +76,18 @@ export default function Afiliados() {
           (a.email?.toLowerCase().includes(t) ?? false);
         if (!coincide) return false;
       }
-
-      // Filtro por sector
-      if (filtroSector !== 'todos' && a.sector_id !== Number(filtroSector)) {
-        return false;
-      }
-
-      // Filtro por estado
+      if (filtroSector !== 'todos' && a.sector_id !== Number(filtroSector)) return false;
       if (filtroEstado === 'activos'   && !a.activo) return false;
       if (filtroEstado === 'inactivos' &&  a.activo) return false;
-
       return true;
     });
   }, [afiliados, busqueda, filtroSector, filtroEstado]);
 
-  // ---- Paginación ----
-  const afiliadosPagina = afiliadosFiltrados.slice(
+  const enPagina = afiliadosFiltrados.slice(
     pagina * filasPorPagina,
     pagina * filasPorPagina + filasPorPagina,
   );
 
-  // ---- Borrado ----
   async function confirmarBorrado() {
     if (!aBorrar) return;
     setBorrando(true);
@@ -127,9 +105,29 @@ export default function Afiliados() {
     setABorrar(null);
   }
 
+  // Descarga el CSV con los afiliados actualmente filtrados
+  function handleExportarCSV() {
+    const fecha = new Date().toISOString().slice(0, 10);
+    exportarCSV(
+      `afiliados-${fecha}.csv`,
+      afiliadosFiltrados,
+      [
+        { clave: 'dni',           etiqueta: 'DNI' },
+        { clave: 'nombre',        etiqueta: 'Nombre' },
+        { clave: 'apellidos',     etiqueta: 'Apellidos' },
+        { clave: 'email',         etiqueta: 'Email' },
+        { clave: 'telefono',      etiqueta: 'Teléfono' },
+        { clave: 'sector.nombre', etiqueta: 'Sector' },
+        { clave: 'empresa',       etiqueta: 'Empresa' },
+        { clave: 'fecha_alta',    etiqueta: 'Fecha de alta' },
+        { clave: 'activo',        etiqueta: 'Estado',
+          formato: (v) => v ? 'Activo' : 'Inactivo' },
+      ],
+    );
+  }
+
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Cabecera */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
@@ -146,14 +144,26 @@ export default function Afiliados() {
             {afiliados.filter((a) => a.activo).length} activos en total
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/afiliados/nuevo')}
-          size="large"
-        >
-          Nuevo afiliado
-        </Button>
+        <Stack direction="row" spacing={1.5}>
+          <Tooltip title="Descargar listado en CSV">
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportarCSV}
+              disabled={afiliadosFiltrados.length === 0}
+            >
+              Exportar CSV
+            </Button>
+          </Tooltip>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/afiliados/nuevo')}
+            size="large"
+          >
+            Nuevo afiliado
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Filtros */}
@@ -174,9 +184,7 @@ export default function Afiliados() {
             }}
           />
           <TextField
-            select
-            size="small"
-            label="Sector"
+            select size="small" label="Sector"
             value={filtroSector}
             onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
             sx={{ minWidth: 160 }}
@@ -187,9 +195,7 @@ export default function Afiliados() {
             ))}
           </TextField>
           <TextField
-            select
-            size="small"
-            label="Estado"
+            select size="small" label="Estado"
             value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
             sx={{ minWidth: 140 }}
@@ -203,7 +209,7 @@ export default function Afiliados() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Tabla de afiliados */}
+      {/* Tabla */}
       <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
         {cargando ? (
           <Box sx={{ p: 6, textAlign: 'center' }}>
@@ -232,12 +238,22 @@ export default function Afiliados() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {afiliadosPagina.map((a) => (
+                  {enPagina.map((a) => (
                     <TableRow key={a.id} hover>
                       <TableCell sx={{ fontFamily: 'monospace' }}>
                         {a.dni}
                       </TableCell>
-                      <TableCell>{a.apellidos}, {a.nombre}</TableCell>
+                      <TableCell>
+                        {/* El nombre es ahora un enlace al detalle */}
+                        <MuiLink
+                          component="button"
+                          underline="hover"
+                          onClick={() => navigate(`/afiliados/${a.id}/detalle`)}
+                          sx={{ textAlign: 'left', color: 'primary.main', fontWeight: 500 }}
+                        >
+                          {a.apellidos}, {a.nombre}
+                        </MuiLink>
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={a.sector?.nombre ?? '—'}
@@ -256,19 +272,14 @@ export default function Afiliados() {
                       </TableCell>
                       <TableCell align="right">
                         <Tooltip title="Editar">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/afiliados/${a.id}`)}
-                          >
+                          <IconButton size="small"
+                            onClick={() => navigate(`/afiliados/${a.id}`)}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Eliminar">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setABorrar(a)}
-                          >
+                          <IconButton size="small" color="error"
+                            onClick={() => setABorrar(a)}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -296,7 +307,6 @@ export default function Afiliados() {
         )}
       </Paper>
 
-      {/* Diálogo de confirmación de borrado */}
       <DialogoConfirmacion
         abierto={!!aBorrar}
         titulo="Eliminar afiliado"

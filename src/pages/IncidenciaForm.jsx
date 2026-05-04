@@ -1,12 +1,13 @@
 // src/pages/IncidenciaForm.jsx
 // -------------------------------------------------------
 // Formulario para crear / editar una incidencia.
-// /incidencias/nuevo  → modo crear
-// /incidencias/:id    → modo editar
+// /incidencias/nuevo                 → modo crear
+// /incidencias/nuevo?afiliado=42     → modo crear con afiliado preseleccionado
+// /incidencias/:id                   → modo editar
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, TextField, MenuItem,
   Stack, Paper, Grid, Alert, CircularProgress, Divider,
@@ -27,6 +28,7 @@ const ESTADO_INICIAL = {
 export default function IncidenciaForm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const esEdicion = id && id !== 'nuevo';
 
   const [datos, setDatos]         = useState(ESTADO_INICIAL);
@@ -42,7 +44,6 @@ export default function IncidenciaForm() {
     setCargando(true);
     setError(null);
 
-    // Cargar afiliados activos para elegir
     const { data: afils, error: errAfil } = await supabase
       .from('afiliados')
       .select('id, dni, nombre, apellidos, sector:sectores(nombre)')
@@ -56,7 +57,6 @@ export default function IncidenciaForm() {
     }
     setAfiliados(afils ?? []);
 
-    // Si es edición, cargar la incidencia
     if (esEdicion) {
       const { data, error } = await supabase
         .from('incidencias')
@@ -75,6 +75,12 @@ export default function IncidenciaForm() {
           prioridad: data.prioridad,
           resolucion: data.resolucion ?? '',
         });
+      }
+    } else {
+      // Si viene de la ficha de un afiliado, se preselecciona
+      const afiliadoParam = searchParams.get('afiliado');
+      if (afiliadoParam) {
+        setDatos((prev) => ({ ...prev, afiliado_id: Number(afiliadoParam) }));
       }
     }
 
@@ -97,13 +103,10 @@ export default function IncidenciaForm() {
 
     setGuardando(true);
 
-    // Si pasa a resuelta, registrar fecha de cierre
     const payload = {
       ...datos,
       resolucion: datos.resolucion?.trim() || null,
-      fecha_cierre: datos.estado === 'resuelta'
-        ? new Date().toISOString()
-        : null,
+      fecha_cierre: datos.estado === 'resuelta' ? new Date().toISOString() : null,
     };
 
     let respuesta;
@@ -136,7 +139,6 @@ export default function IncidenciaForm() {
     );
   }
 
-  // Afiliado seleccionado actualmente
   const afiliadoSeleccionado = afiliados.find((a) => a.id === datos.afiliado_id) ?? null;
 
   return (
@@ -166,14 +168,11 @@ export default function IncidenciaForm() {
             {error && <Alert severity="error">{error}</Alert>}
             {exito && <Alert severity="success">Guardado correctamente</Alert>}
 
-            {/* Selector de afiliado con buscador integrado */}
             <Autocomplete
               options={afiliados}
               value={afiliadoSeleccionado}
               onChange={(_e, val) => actualizar('afiliado_id', val?.id ?? '')}
-              getOptionLabel={(a) =>
-                a ? `${a.apellidos}, ${a.nombre} (${a.dni})` : ''
-              }
+              getOptionLabel={(a) => a ? `${a.apellidos}, ${a.nombre} (${a.dni})` : ''}
               renderOption={(props, a) => (
                 <Box component="li" {...props}>
                   <Box>
@@ -205,8 +204,7 @@ export default function IncidenciaForm() {
               label="Título"
               value={datos.titulo}
               onChange={(e) => actualizar('titulo', e.target.value)}
-              required
-              fullWidth
+              required fullWidth
               placeholder="Ej.: Consulta sobre horas extras"
             />
 
@@ -214,18 +212,13 @@ export default function IncidenciaForm() {
               label="Descripción"
               value={datos.descripcion}
               onChange={(e) => actualizar('descripcion', e.target.value)}
-              required
-              fullWidth
-              multiline
-              rows={4}
+              required fullWidth multiline rows={4}
               placeholder="Detalla el problema, consulta o queja del afiliado"
             />
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  select
-                  label="Estado"
+                <TextField select label="Estado"
                   value={datos.estado}
                   onChange={(e) => actualizar('estado', e.target.value)}
                   fullWidth
@@ -236,9 +229,7 @@ export default function IncidenciaForm() {
                 </TextField>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  select
-                  label="Prioridad"
+                <TextField select label="Prioridad"
                   value={datos.prioridad}
                   onChange={(e) => actualizar('prioridad', e.target.value)}
                   fullWidth
@@ -254,25 +245,16 @@ export default function IncidenciaForm() {
               label="Resolución / observaciones"
               value={datos.resolucion}
               onChange={(e) => actualizar('resolucion', e.target.value)}
-              fullWidth
-              multiline
-              rows={3}
+              fullWidth multiline rows={3}
               helperText="Cómo se ha resuelto o qué se ha hecho hasta ahora (opcional)"
             />
 
             <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
-              <Button
-                onClick={() => navigate('/incidencias')}
-                disabled={guardando}
-              >
+              <Button onClick={() => navigate('/incidencias')} disabled={guardando}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                startIcon={<SaveIcon />}
-                disabled={guardando}
-              >
+              <Button type="submit" variant="contained" startIcon={<SaveIcon />}
+                disabled={guardando}>
                 {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear incidencia'}
               </Button>
             </Stack>

@@ -1,0 +1,42 @@
+# =====================================================
+# .dockerignore
+# =====================================================
+# Lista de archivos y carpetas que NO se copian al
+# contenedor durante el build. Reduce el tamaño de la
+# imagen y acelera el proceso de construcción.
+# =====================================================
+
+# Dependencias (se reinstalan dentro del contenedor)
+node_modules
+npm-debug.log
+
+# Resultado de builds previos
+dist
+build
+
+# Variables de entorno (se pasan por args en docker-compose)
+.env
+.env.local
+.env.production
+
+# Control de versiones
+.git
+.gitignore
+
+# IDEs y editores
+.vscode
+.idea
+*.swp
+
+# Archivos del SO
+.DS_Store
+Thumbs.db
+
+# Documentación que no necesita ir en la imagen
+README.md
+docs/
+memoria/
+
+# Tests
+coverage
+.nyc_output

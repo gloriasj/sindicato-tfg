@@ -1,10 +1,7 @@
 // src/pages/Incidencias.jsx
 // -------------------------------------------------------
-// Listado de incidencias con filtros por estado, prioridad
-// y sector, buscador y cambio rápido de estado.
-// Cumple el objetivo del anteproyecto: "registro de
-// consultas laborales, quejas o problemas legales
-// asociados a un afiliado, con seguimiento de estado".
+// Listado de incidencias con filtros, cambio rápido de
+// estado, exportación a CSV y enlaces al detalle.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -14,6 +11,7 @@ import {
   Stack, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Chip, Tooltip, InputAdornment,
   CircularProgress, Alert, TablePagination, Select,
+  Link as MuiLink,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -21,11 +19,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   AssignmentLate as AssignmentLateIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { exportarCSV } from '../lib/exportarCSV';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
-// Configuración visual de cada estado y prioridad
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: 'warning' },
   en_proceso: { label: 'En proceso', color: 'info' },
@@ -52,7 +51,7 @@ export default function Incidencias() {
   const [cargando, setCargando]   = useState(true);
   const [error, setError]         = useState(null);
 
-  const [aBorrar, setABorrar] = useState(null);
+  const [aBorrar, setABorrar]   = useState(null);
   const [borrando, setBorrando] = useState(false);
 
   useEffect(() => { cargarDatos(); }, []);
@@ -61,8 +60,6 @@ export default function Incidencias() {
     setCargando(true);
     setError(null);
 
-    // Cargamos las incidencias con los datos del afiliado
-    // y de su sector mediante JOINs anidados.
     const [incRes, sectRes] = await Promise.all([
       supabase
         .from('incidencias')
@@ -87,7 +84,6 @@ export default function Incidencias() {
     setCargando(false);
   }
 
-  // Filtrado en cliente
   const filtradas = useMemo(() => {
     return incidencias.filter((i) => {
       if (busqueda) {
@@ -99,7 +95,7 @@ export default function Incidencias() {
           (i.afiliado?.dni?.toLowerCase().includes(t) ?? false);
         if (!coincide) return false;
       }
-      if (filtroEstado !== 'todos' && i.estado !== filtroEstado) return false;
+      if (filtroEstado    !== 'todos' && i.estado    !== filtroEstado)    return false;
       if (filtroPrioridad !== 'todos' && i.prioridad !== filtroPrioridad) return false;
       if (filtroSector !== 'todos' &&
           i.afiliado?.sector?.id !== Number(filtroSector)) return false;
@@ -112,16 +108,11 @@ export default function Incidencias() {
     pagina * filasPorPagina + filasPorPagina,
   );
 
-  // Cambiar estado directamente desde la tabla
   async function cambiarEstado(incidencia, nuevoEstado) {
-    const datos = { estado: nuevoEstado };
-    if (nuevoEstado === 'resuelta') {
-      datos.fecha_cierre = new Date().toISOString();
-    } else {
-      // Si pasa de resuelta a otra cosa, limpiamos la fecha
-      datos.fecha_cierre = null;
-    }
-
+    const datos = {
+      estado: nuevoEstado,
+      fecha_cierre: nuevoEstado === 'resuelta' ? new Date().toISOString() : null,
+    };
     const { error } = await supabase
       .from('incidencias')
       .update(datos)
@@ -153,9 +144,34 @@ export default function Incidencias() {
     setABorrar(null);
   }
 
+  // Exporta el listado filtrado actual a CSV
+  function handleExportarCSV() {
+    const fecha = new Date().toISOString().slice(0, 10);
+    exportarCSV(
+      `incidencias-${fecha}.csv`,
+      filtradas,
+      [
+        { clave: 'titulo',                etiqueta: 'Título' },
+        { clave: 'afiliado.dni',          etiqueta: 'DNI afiliado' },
+        { clave: 'afiliado',              etiqueta: 'Afiliado',
+          formato: (a) => a ? `${a.apellidos}, ${a.nombre}` : '' },
+        { clave: 'afiliado.sector.nombre', etiqueta: 'Sector' },
+        { clave: 'estado',                etiqueta: 'Estado',
+          formato: (v) => ESTADOS[v]?.label ?? v },
+        { clave: 'prioridad',             etiqueta: 'Prioridad',
+          formato: (v) => PRIORIDADES[v]?.label ?? v },
+        { clave: 'fecha_apertura',        etiqueta: 'Fecha apertura',
+          formato: (v) => v ? new Date(v).toLocaleString('es-ES') : '' },
+        { clave: 'fecha_cierre',          etiqueta: 'Fecha cierre',
+          formato: (v) => v ? new Date(v).toLocaleString('es-ES') : '' },
+        { clave: 'descripcion',           etiqueta: 'Descripción' },
+        { clave: 'resolucion',            etiqueta: 'Resolución' },
+      ],
+    );
+  }
+
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Cabecera */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
@@ -164,29 +180,39 @@ export default function Incidencias() {
         mb={3}
       >
         <Box>
-          <Typography variant="h4" fontWeight={600}>
-            Incidencias
-          </Typography>
+          <Typography variant="h4" fontWeight={600}>Incidencias</Typography>
           <Typography variant="body2" color="text.secondary">
             {filtradas.length} resultado(s) ·{' '}
             {incidencias.filter((i) => i.estado === 'pendiente').length} pendientes
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/incidencias/nuevo')}
-          size="large"
-        >
-          Nueva incidencia
-        </Button>
+        <Stack direction="row" spacing={1.5}>
+          <Tooltip title="Descargar listado en CSV">
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportarCSV}
+              disabled={filtradas.length === 0}
+            >
+              Exportar CSV
+            </Button>
+          </Tooltip>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/incidencias/nuevo')}
+            size="large"
+          >
+            Nueva incidencia
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Filtros */}
       <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
-            placeholder="Buscar por título, descripción, afiliado..."
+            placeholder="Buscar por título, descripción o afiliado..."
             value={busqueda}
             onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
             size="small"
@@ -199,8 +225,7 @@ export default function Incidencias() {
               ),
             }}
           />
-          <TextField
-            select size="small" label="Estado"
+          <TextField select size="small" label="Estado"
             value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
             sx={{ minWidth: 140 }}
@@ -210,8 +235,7 @@ export default function Incidencias() {
             <MenuItem value="en_proceso">En proceso</MenuItem>
             <MenuItem value="resuelta">Resuelta</MenuItem>
           </TextField>
-          <TextField
-            select size="small" label="Prioridad"
+          <TextField select size="small" label="Prioridad"
             value={filtroPrioridad}
             onChange={(e) => { setFiltroPrioridad(e.target.value); setPagina(0); }}
             sx={{ minWidth: 140 }}
@@ -221,8 +245,7 @@ export default function Incidencias() {
             <MenuItem value="media">Media</MenuItem>
             <MenuItem value="alta">Alta</MenuItem>
           </TextField>
-          <TextField
-            select size="small" label="Sector"
+          <TextField select size="small" label="Sector"
             value={filtroSector}
             onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
             sx={{ minWidth: 160 }}
@@ -269,14 +292,27 @@ export default function Incidencias() {
                   {enPagina.map((i) => (
                     <TableRow key={i.id} hover>
                       <TableCell>
-                        <Typography variant="body2" fontWeight={500}>
+                        {/* Título es enlace al detalle */}
+                        <MuiLink
+                          component="button"
+                          underline="hover"
+                          onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
+                          sx={{ textAlign: 'left', color: 'primary.main', fontWeight: 500 }}
+                        >
                           {i.titulo}
-                        </Typography>
+                        </MuiLink>
                       </TableCell>
                       <TableCell>
-                        {i.afiliado
-                          ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}`
-                          : '—'}
+                        {i.afiliado ? (
+                          <MuiLink
+                            component="button"
+                            underline="hover"
+                            onClick={() => navigate(`/afiliados/${i.afiliado.id}/detalle`)}
+                            sx={{ textAlign: 'left' }}
+                          >
+                            {i.afiliado.apellidos}, {i.afiliado.nombre}
+                          </MuiLink>
+                        ) : '—'}
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -286,15 +322,11 @@ export default function Incidencias() {
                         />
                       </TableCell>
                       <TableCell>
-                        {/* Cambio rápido de estado */}
                         <Select
                           value={i.estado}
                           onChange={(e) => cambiarEstado(i, e.target.value)}
                           size="small"
-                          sx={{
-                            minWidth: 130,
-                            '& .MuiSelect-select': { py: 0.5 },
-                          }}
+                          sx={{ minWidth: 130, '& .MuiSelect-select': { py: 0.5 } }}
                         >
                           {Object.entries(ESTADOS).map(([k, v]) => (
                             <MenuItem key={k} value={k}>{v.label}</MenuItem>

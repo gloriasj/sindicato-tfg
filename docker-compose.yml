@@ -1,0 +1,25 @@
+# =====================================================
+# docker-compose.yml
+# =====================================================
+# Levanta el frontend de la plataforma sindical con un
+# solo comando: 'docker compose up'.
+#
+# Las credenciales de Supabase se leen del archivo .env
+# (el mismo que usa Vite en desarrollo).
+# =====================================================
+
+services:
+  frontend:
+    container_name: sindicato-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pasamos las variables al proceso de build de Vite
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    ports:
+      # Mapeamos el puerto 8080 del host al 80 del contenedor
+      # (puedes acceder en http://localhost:8080)
+      - "8080:80"
+    restart: unless-stopped
