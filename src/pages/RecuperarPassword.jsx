@@ -1,7 +1,8 @@
-// src/pages/Login.jsx
+// src/pages/RecuperarPassword.jsx
 // -------------------------------------------------------
-// Pantalla de inicio de sesión con email y contraseña.
-// Incluye enlaces a registro y recuperación de contraseña.
+// Pantalla donde el usuario pide un email con enlace
+// para restablecer su contraseña. Supabase envía el email
+// automáticamente con un enlace que lleva a /restablecer.
 // -------------------------------------------------------
 
 import { useState } from 'react';
@@ -9,15 +10,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Box, Paper, TextField, Button, Typography, Alert, Stack,
 } from '@mui/material';
-import { useAuth } from '../context/AuthContext';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { supabase } from '../lib/supabase';
 
-export default function Login() {
-  const { login } = useAuth();
+export default function RecuperarPassword() {
   const navigate = useNavigate();
 
   const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError]       = useState(null);
+  const [exito, setExito]       = useState(false);
   const [cargando, setCargando] = useState(false);
 
   async function handleSubmit(e) {
@@ -25,13 +26,21 @@ export default function Login() {
     setError(null);
     setCargando(true);
 
-    const { error } = await login(email, password);
+    // El redirectTo debe coincidir con la URL de la app.
+    // Supabase añadirá un token al enlace que se incluye en el email.
+    const { error: errSupabase } = await supabase.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: `${window.location.origin}/restablecer`,
+      },
+    );
 
-    if (error) {
-      setError(traducirError(error.message));
+    if (errSupabase) {
+      setError(errSupabase.message);
       setCargando(false);
     } else {
-      navigate('/dashboard');
+      setExito(true);
+      setCargando(false);
     }
   }
 
@@ -42,16 +51,32 @@ export default function Login() {
       bgcolor: '#f3f6fb', p: 2,
     }}>
       <Paper elevation={2} sx={{ p: 4, maxWidth: 420, width: '100%' }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/login')}
+          size="small"
+          sx={{ mb: 1 }}
+        >
+          Volver al inicio de sesión
+        </Button>
+
         <Typography variant="h5" fontWeight={600} gutterBottom>
-          Portal Sindical
+          Recuperar contraseña
         </Typography>
         <Typography variant="body2" color="text.secondary" mb={3}>
-          Inicia sesión para acceder a tu panel
+          Introduce tu email y te enviaremos un enlace para
+          restablecer tu contraseña.
         </Typography>
 
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
+            {exito && (
+              <Alert severity="success">
+                Si la cuenta existe, recibirás un email con el enlace en unos minutos.
+                Revisa también la carpeta de spam.
+              </Alert>
+            )}
 
             <TextField
               label="Email"
@@ -61,41 +86,23 @@ export default function Login() {
               required
               fullWidth
               autoFocus
+              disabled={exito}
             />
-
-            <TextField
-              label="Contraseña"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
-
-            {/* Enlace a recuperar contraseña */}
-            <Box sx={{ textAlign: 'right' }}>
-              <Link
-                to="/recuperar"
-                style={{ fontSize: 14, color: '#1976d2', textDecoration: 'none' }}
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </Box>
 
             <Button
               type="submit"
               variant="contained"
               size="large"
-              disabled={cargando}
+              disabled={cargando || exito}
               fullWidth
             >
-              {cargando ? 'Entrando...' : 'Iniciar sesión'}
+              {cargando ? 'Enviando...' : 'Enviar enlace'}
             </Button>
 
             <Typography variant="body2" textAlign="center" color="text.secondary">
-              ¿No tienes cuenta?{' '}
-              <Link to="/register" style={{ color: '#1976d2' }}>
-                Regístrate
+              ¿Recuerdas tu contraseña?{' '}
+              <Link to="/login" style={{ color: '#1976d2' }}>
+                Inicia sesión
               </Link>
             </Typography>
           </Stack>
@@ -103,14 +110,4 @@ export default function Login() {
       </Paper>
     </Box>
   );
-}
-
-function traducirError(msg) {
-  if (msg.includes('Invalid login credentials')) {
-    return 'Email o contraseña incorrectos';
-  }
-  if (msg.includes('Email not confirmed')) {
-    return 'Tienes que confirmar tu email antes de iniciar sesión';
-  }
-  return msg;
 }

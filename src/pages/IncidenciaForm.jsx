@@ -1,9 +1,7 @@
 // src/pages/IncidenciaForm.jsx
 // -------------------------------------------------------
-// Formulario para crear / editar una incidencia.
-// /incidencias/nuevo                 → modo crear
-// /incidencias/nuevo?afiliado=42     → modo crear con afiliado preseleccionado
-// /incidencias/:id                   → modo editar
+// Formulario crear/editar incidencia, ahora con
+// notificaciones globales.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -15,14 +13,11 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { useNotificacion } from '../context/NotificacionContext';
 
 const ESTADO_INICIAL = {
-  afiliado_id: '',
-  titulo: '',
-  descripcion: '',
-  estado: 'pendiente',
-  prioridad: 'media',
-  resolucion: '',
+  afiliado_id: '', titulo: '', descripcion: '',
+  estado: 'pendiente', prioridad: 'media', resolucion: '',
 };
 
 export default function IncidenciaForm() {
@@ -30,19 +25,19 @@ export default function IncidenciaForm() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const esEdicion = id && id !== 'nuevo';
+  const { exito, error: notificarError } = useNotificacion();
 
   const [datos, setDatos]         = useState(ESTADO_INICIAL);
   const [afiliados, setAfiliados] = useState([]);
   const [cargando, setCargando]   = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [error, setError]         = useState(null);
-  const [exito, setExito]         = useState(false);
+  const [errorForm, setErrorForm] = useState(null);
 
   useEffect(() => { cargarInicial(); }, [id]);
 
   async function cargarInicial() {
     setCargando(true);
-    setError(null);
+    setErrorForm(null);
 
     const { data: afils, error: errAfil } = await supabase
       .from('afiliados')
@@ -51,7 +46,7 @@ export default function IncidenciaForm() {
       .order('apellidos');
 
     if (errAfil) {
-      setError('No se pudieron cargar los afiliados: ' + errAfil.message);
+      setErrorForm('No se pudieron cargar los afiliados: ' + errAfil.message);
       setCargando(false);
       return;
     }
@@ -65,7 +60,7 @@ export default function IncidenciaForm() {
         .single();
 
       if (error) {
-        setError('Incidencia no encontrada: ' + error.message);
+        setErrorForm('Incidencia no encontrada: ' + error.message);
       } else {
         setDatos({
           afiliado_id: data.afiliado_id,
@@ -77,7 +72,6 @@ export default function IncidenciaForm() {
         });
       }
     } else {
-      // Si viene de la ficha de un afiliado, se preselecciona
       const afiliadoParam = searchParams.get('afiliado');
       if (afiliadoParam) {
         setDatos((prev) => ({ ...prev, afiliado_id: Number(afiliadoParam) }));
@@ -93,11 +87,10 @@ export default function IncidenciaForm() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError(null);
-    setExito(false);
+    setErrorForm(null);
 
     if (!datos.afiliado_id) {
-      setError('Debes seleccionar un afiliado');
+      setErrorForm('Debes seleccionar un afiliado');
       return;
     }
 
@@ -111,23 +104,19 @@ export default function IncidenciaForm() {
 
     let respuesta;
     if (esEdicion) {
-      respuesta = await supabase
-        .from('incidencias')
-        .update(payload)
-        .eq('id', id);
+      respuesta = await supabase.from('incidencias').update(payload).eq('id', id);
     } else {
-      respuesta = await supabase
-        .from('incidencias')
-        .insert(payload);
+      respuesta = await supabase.from('incidencias').insert(payload);
     }
 
+    setGuardando(false);
+
     if (respuesta.error) {
-      setError(respuesta.error.message);
-      setGuardando(false);
+      setErrorForm(respuesta.error.message);
+      notificarError(respuesta.error.message);
     } else {
-      setExito(true);
-      setGuardando(false);
-      setTimeout(() => navigate('/incidencias'), 900);
+      exito(esEdicion ? 'Incidencia actualizada correctamente' : 'Incidencia creada correctamente');
+      navigate('/incidencias');
     }
   }
 
@@ -143,11 +132,8 @@ export default function IncidenciaForm() {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/incidencias')}
-        sx={{ mb: 2 }}
-      >
+      <Button startIcon={<ArrowBackIcon />}
+        onClick={() => navigate('/incidencias')} sx={{ mb: 2 }}>
         Volver al listado
       </Button>
 
@@ -165,8 +151,7 @@ export default function IncidenciaForm() {
 
         <form onSubmit={handleSubmit}>
           <Stack spacing={3}>
-            {error && <Alert severity="error">{error}</Alert>}
-            {exito && <Alert severity="success">Guardado correctamente</Alert>}
+            {errorForm && <Alert severity="error">{errorForm}</Alert>}
 
             <Autocomplete
               options={afiliados}
@@ -186,10 +171,7 @@ export default function IncidenciaForm() {
                 </Box>
               )}
               renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Afiliado afectado"
-                  required
+                <TextField {...params} label="Afiliado afectado" required
                   helperText={
                     afiliados.length === 0
                       ? 'No hay afiliados activos. Crea uno antes desde la sección Afiliados.'
@@ -200,16 +182,14 @@ export default function IncidenciaForm() {
               isOptionEqualToValue={(opt, val) => opt.id === val?.id}
             />
 
-            <TextField
-              label="Título"
+            <TextField label="Título"
               value={datos.titulo}
               onChange={(e) => actualizar('titulo', e.target.value)}
               required fullWidth
               placeholder="Ej.: Consulta sobre horas extras"
             />
 
-            <TextField
-              label="Descripción"
+            <TextField label="Descripción"
               value={datos.descripcion}
               onChange={(e) => actualizar('descripcion', e.target.value)}
               required fullWidth multiline rows={4}
@@ -221,8 +201,7 @@ export default function IncidenciaForm() {
                 <TextField select label="Estado"
                   value={datos.estado}
                   onChange={(e) => actualizar('estado', e.target.value)}
-                  fullWidth
-                >
+                  fullWidth>
                   <MenuItem value="pendiente">Pendiente</MenuItem>
                   <MenuItem value="en_proceso">En proceso</MenuItem>
                   <MenuItem value="resuelta">Resuelta</MenuItem>
@@ -232,8 +211,7 @@ export default function IncidenciaForm() {
                 <TextField select label="Prioridad"
                   value={datos.prioridad}
                   onChange={(e) => actualizar('prioridad', e.target.value)}
-                  fullWidth
-                >
+                  fullWidth>
                   <MenuItem value="baja">Baja</MenuItem>
                   <MenuItem value="media">Media</MenuItem>
                   <MenuItem value="alta">Alta</MenuItem>
@@ -241,8 +219,7 @@ export default function IncidenciaForm() {
               </Grid>
             </Grid>
 
-            <TextField
-              label="Resolución / observaciones"
+            <TextField label="Resolución / observaciones"
               value={datos.resolucion}
               onChange={(e) => actualizar('resolucion', e.target.value)}
               fullWidth multiline rows={3}

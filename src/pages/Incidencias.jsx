@@ -1,7 +1,7 @@
 // src/pages/Incidencias.jsx
 // -------------------------------------------------------
 // Listado de incidencias con filtros, cambio rápido de
-// estado, exportación a CSV y enlaces al detalle.
+// estado, exportación a PDF y enlaces al detalle.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -19,10 +19,11 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   AssignmentLate as AssignmentLateIcon,
-  FileDownload as FileDownloadIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
-import { exportarCSV } from '../lib/exportarCSV';
+import { exportarPDF } from '../lib/exportarPDF';
+import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
 const ESTADOS = {
@@ -39,6 +40,7 @@ const PRIORIDADES = {
 
 export default function Incidencias() {
   const navigate = useNavigate();
+  const { exito, error: notificarError } = useNotificacion();
 
   const [incidencias, setIncidencias] = useState([]);
   const [sectores, setSectores]       = useState([]);
@@ -119,11 +121,12 @@ export default function Incidencias() {
       .eq('id', incidencia.id);
 
     if (error) {
-      setError('No se pudo actualizar el estado: ' + error.message);
+      notificarError('No se pudo actualizar el estado: ' + error.message);
     } else {
       setIncidencias((prev) =>
         prev.map((i) => (i.id === incidencia.id ? { ...i, ...datos } : i)),
       );
+      exito(`Estado actualizado a "${ESTADOS[nuevoEstado].label}"`);
     }
   }
 
@@ -135,39 +138,52 @@ export default function Incidencias() {
       .delete()
       .eq('id', aBorrar.id);
 
-    if (error) {
-      setError('No se pudo eliminar: ' + error.message);
-    } else {
-      setIncidencias((prev) => prev.filter((i) => i.id !== aBorrar.id));
-    }
     setBorrando(false);
     setABorrar(null);
+
+    if (error) {
+      notificarError('No se pudo eliminar: ' + error.message);
+    } else {
+      setIncidencias((prev) => prev.filter((i) => i.id !== aBorrar.id));
+      exito('Incidencia eliminada correctamente');
+    }
   }
 
-  // Exporta el listado filtrado actual a CSV
-  function handleExportarCSV() {
-    const fecha = new Date().toISOString().slice(0, 10);
-    exportarCSV(
-      `incidencias-${fecha}.csv`,
-      filtradas,
-      [
-        { clave: 'titulo',                etiqueta: 'Título' },
-        { clave: 'afiliado.dni',          etiqueta: 'DNI afiliado' },
-        { clave: 'afiliado',              etiqueta: 'Afiliado',
-          formato: (a) => a ? `${a.apellidos}, ${a.nombre}` : '' },
-        { clave: 'afiliado.sector.nombre', etiqueta: 'Sector' },
-        { clave: 'estado',                etiqueta: 'Estado',
-          formato: (v) => ESTADOS[v]?.label ?? v },
-        { clave: 'prioridad',             etiqueta: 'Prioridad',
-          formato: (v) => PRIORIDADES[v]?.label ?? v },
-        { clave: 'fecha_apertura',        etiqueta: 'Fecha apertura',
-          formato: (v) => v ? new Date(v).toLocaleString('es-ES') : '' },
-        { clave: 'fecha_cierre',          etiqueta: 'Fecha cierre',
-          formato: (v) => v ? new Date(v).toLocaleString('es-ES') : '' },
-        { clave: 'descripcion',           etiqueta: 'Descripción' },
-        { clave: 'resolucion',            etiqueta: 'Resolución' },
-      ],
-    );
+  function handleExportarPDF() {
+    try {
+      const fecha = new Date().toISOString().slice(0, 10);
+      const pendientes = filtradas.filter((i) => i.estado === 'pendiente').length;
+
+      exportarPDF({
+        titulo: 'Listado de incidencias',
+        subtitulo: `${filtradas.length} incidencia(s) · ${pendientes} pendientes`,
+        filas: filtradas,
+        columnas: [
+          { clave: 'titulo',                etiqueta: 'Título',    ancho: 50 },
+          { clave: 'afiliado',              etiqueta: 'Afiliado',
+            formato: (a) => a ? `${a.apellidos}, ${a.nombre}` : '',
+            ancho: 45 },
+          { clave: 'afiliado.sector.nombre', etiqueta: 'Sector',   ancho: 25 },
+          { clave: 'estado',                etiqueta: 'Estado',
+            formato: (v) => ESTADOS[v]?.label ?? v,
+            ancho: 25 },
+          { clave: 'prioridad',             etiqueta: 'Prioridad',
+            formato: (v) => PRIORIDADES[v]?.label ?? v,
+            ancho: 22 },
+          { clave: 'fecha_apertura',        etiqueta: 'Apertura',
+            formato: (v) => v ? new Date(v).toLocaleDateString('es-ES') : '',
+            ancho: 25 },
+          { clave: 'fecha_cierre',          etiqueta: 'Cierre',
+            formato: (v) => v ? new Date(v).toLocaleDateString('es-ES') : '—',
+            ancho: 25 },
+        ],
+        nombreArchivo: `incidencias-${fecha}.pdf`,
+      });
+
+      exito('PDF generado correctamente');
+    } catch (e) {
+      notificarError('Error generando el PDF: ' + e.message);
+    }
   }
 
   return (
@@ -187,14 +203,14 @@ export default function Incidencias() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
-          <Tooltip title="Descargar listado en CSV">
+          <Tooltip title="Descargar listado en PDF">
             <Button
               variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={handleExportarCSV}
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleExportarPDF}
               disabled={filtradas.length === 0}
             >
-              Exportar CSV
+              Exportar PDF
             </Button>
           </Tooltip>
           <Button
@@ -208,7 +224,6 @@ export default function Incidencias() {
         </Stack>
       </Stack>
 
-      {/* Filtros */}
       <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
@@ -228,8 +243,7 @@ export default function Incidencias() {
           <TextField select size="small" label="Estado"
             value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 140 }}
-          >
+            sx={{ minWidth: 140 }}>
             <MenuItem value="todos">Todos</MenuItem>
             <MenuItem value="pendiente">Pendiente</MenuItem>
             <MenuItem value="en_proceso">En proceso</MenuItem>
@@ -238,8 +252,7 @@ export default function Incidencias() {
           <TextField select size="small" label="Prioridad"
             value={filtroPrioridad}
             onChange={(e) => { setFiltroPrioridad(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 140 }}
-          >
+            sx={{ minWidth: 140 }}>
             <MenuItem value="todos">Todas</MenuItem>
             <MenuItem value="baja">Baja</MenuItem>
             <MenuItem value="media">Media</MenuItem>
@@ -248,8 +261,7 @@ export default function Incidencias() {
           <TextField select size="small" label="Sector"
             value={filtroSector}
             onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 160 }}
-          >
+            sx={{ minWidth: 160 }}>
             <MenuItem value="todos">Todos</MenuItem>
             {sectores.map((s) => (
               <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
@@ -260,7 +272,6 @@ export default function Incidencias() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Tabla */}
       <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
         {cargando ? (
           <Box sx={{ p: 6, textAlign: 'center' }}>
@@ -292,7 +303,6 @@ export default function Incidencias() {
                   {enPagina.map((i) => (
                     <TableRow key={i.id} hover>
                       <TableCell>
-                        {/* Título es enlace al detalle */}
                         <MuiLink
                           component="button"
                           underline="hover"

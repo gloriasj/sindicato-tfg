@@ -1,8 +1,8 @@
 // src/pages/Afiliados.jsx
 // -------------------------------------------------------
 // Listado de afiliados con búsqueda, filtros, paginación,
-// exportación a CSV y enlace al detalle al hacer clic
-// sobre el nombre de cada afiliado.
+// exportación a PDF y enlace al detalle al hacer clic
+// sobre el nombre.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -19,14 +19,16 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   PersonOff as PersonOffIcon,
-  FileDownload as FileDownloadIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
-import { exportarCSV } from '../lib/exportarCSV';
+import { exportarPDF } from '../lib/exportarPDF';
+import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
 export default function Afiliados() {
   const navigate = useNavigate();
+  const { exito, error: notificarError } = useNotificacion();
 
   const [afiliados, setAfiliados]   = useState([]);
   const [sectores, setSectores]     = useState([]);
@@ -96,34 +98,46 @@ export default function Afiliados() {
       .delete()
       .eq('id', aBorrar.id);
 
-    if (error) {
-      setError('No se pudo eliminar: ' + error.message);
-    } else {
-      setAfiliados((prev) => prev.filter((a) => a.id !== aBorrar.id));
-    }
     setBorrando(false);
     setABorrar(null);
+
+    if (error) {
+      notificarError('No se pudo eliminar: ' + error.message);
+    } else {
+      setAfiliados((prev) => prev.filter((a) => a.id !== aBorrar.id));
+      exito('Afiliado eliminado correctamente');
+    }
   }
 
-  // Descarga el CSV con los afiliados actualmente filtrados
-  function handleExportarCSV() {
-    const fecha = new Date().toISOString().slice(0, 10);
-    exportarCSV(
-      `afiliados-${fecha}.csv`,
-      afiliadosFiltrados,
-      [
-        { clave: 'dni',           etiqueta: 'DNI' },
-        { clave: 'nombre',        etiqueta: 'Nombre' },
-        { clave: 'apellidos',     etiqueta: 'Apellidos' },
-        { clave: 'email',         etiqueta: 'Email' },
-        { clave: 'telefono',      etiqueta: 'Teléfono' },
-        { clave: 'sector.nombre', etiqueta: 'Sector' },
-        { clave: 'empresa',       etiqueta: 'Empresa' },
-        { clave: 'fecha_alta',    etiqueta: 'Fecha de alta' },
-        { clave: 'activo',        etiqueta: 'Estado',
-          formato: (v) => v ? 'Activo' : 'Inactivo' },
-      ],
-    );
+  // Genera y descarga el PDF con los afiliados filtrados
+  function handleExportarPDF() {
+    try {
+      const fecha = new Date().toISOString().slice(0, 10);
+      const totalActivos = afiliadosFiltrados.filter((a) => a.activo).length;
+
+      exportarPDF({
+        titulo: 'Listado de afiliados',
+        subtitulo: `${afiliadosFiltrados.length} afiliado(s) · ${totalActivos} activos`,
+        filas: afiliadosFiltrados,
+        columnas: [
+          { clave: 'dni',           etiqueta: 'DNI',      ancho: 25 },
+          { clave: 'nombre',        etiqueta: 'Nombre',   ancho: 30 },
+          { clave: 'apellidos',     etiqueta: 'Apellidos', ancho: 40 },
+          { clave: 'sector.nombre', etiqueta: 'Sector',   ancho: 25 },
+          { clave: 'empresa',       etiqueta: 'Empresa',  ancho: 35 },
+          { clave: 'email',         etiqueta: 'Email',    ancho: 50 },
+          { clave: 'telefono',      etiqueta: 'Teléfono', ancho: 25 },
+          { clave: 'activo',        etiqueta: 'Estado',
+            formato: (v) => (v ? 'Activo' : 'Inactivo'),
+            ancho: 18 },
+        ],
+        nombreArchivo: `afiliados-${fecha}.pdf`,
+      });
+
+      exito('PDF generado correctamente');
+    } catch (e) {
+      notificarError('Error generando el PDF: ' + e.message);
+    }
   }
 
   return (
@@ -136,23 +150,21 @@ export default function Afiliados() {
         mb={3}
       >
         <Box>
-          <Typography variant="h4" fontWeight={600}>
-            Afiliados
-          </Typography>
+          <Typography variant="h4" fontWeight={600}>Afiliados</Typography>
           <Typography variant="body2" color="text.secondary">
             {afiliadosFiltrados.length} resultado(s) ·{' '}
             {afiliados.filter((a) => a.activo).length} activos en total
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
-          <Tooltip title="Descargar listado en CSV">
+          <Tooltip title="Descargar listado en PDF">
             <Button
               variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={handleExportarCSV}
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleExportarPDF}
               disabled={afiliadosFiltrados.length === 0}
             >
-              Exportar CSV
+              Exportar PDF
             </Button>
           </Tooltip>
           <Button
@@ -183,8 +195,7 @@ export default function Afiliados() {
               ),
             }}
           />
-          <TextField
-            select size="small" label="Sector"
+          <TextField select size="small" label="Sector"
             value={filtroSector}
             onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
             sx={{ minWidth: 160 }}
@@ -194,8 +205,7 @@ export default function Afiliados() {
               <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
             ))}
           </TextField>
-          <TextField
-            select size="small" label="Estado"
+          <TextField select size="small" label="Estado"
             value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
             sx={{ minWidth: 140 }}
@@ -209,7 +219,6 @@ export default function Afiliados() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Tabla */}
       <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
         {cargando ? (
           <Box sx={{ p: 6, textAlign: 'center' }}>
@@ -244,7 +253,6 @@ export default function Afiliados() {
                         {a.dni}
                       </TableCell>
                       <TableCell>
-                        {/* El nombre es ahora un enlace al detalle */}
                         <MuiLink
                           component="button"
                           underline="hover"

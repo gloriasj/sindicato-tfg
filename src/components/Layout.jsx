@@ -1,11 +1,7 @@
 // src/components/Layout.jsx
 // -------------------------------------------------------
-// Diseño principal de la aplicación cuando hay sesión:
-// - Barra superior con datos del usuario y logout
-// - Menú lateral (Drawer) con la navegación
-// - Área central donde se renderizan las páginas
-//
-// React Router renderiza la página actual en <Outlet />.
+// Layout principal con menú lateral, barra superior y
+// confirmación al cerrar sesión.
 // -------------------------------------------------------
 
 import { useState } from 'react';
@@ -24,10 +20,11 @@ import {
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useNotificacion } from '../context/NotificacionContext';
+import DialogoConfirmacion from './DialogoConfirmacion';
 
 const ANCHO_DRAWER = 240;
 
-// Opciones del menú lateral
 const opcionesMenu = [
   { ruta: '/dashboard',   etiqueta: 'Dashboard',   icono: <DashboardIcon /> },
   { ruta: '/afiliados',   etiqueta: 'Afiliados',   icono: <PeopleIcon /> },
@@ -37,18 +34,28 @@ const opcionesMenu = [
 
 export default function Layout() {
   const { profile, logout } = useAuth();
+  const { info } = useNotificacion();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // En móvil el drawer se abre/cierra; en escritorio está siempre visible
   const [drawerAbierto, setDrawerAbierto] = useState(false);
+  const [confirmarLogout, setConfirmarLogout] = useState(false);
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
   function handleNavegar(ruta) {
     navigate(ruta);
     setDrawerAbierto(false);
   }
 
-  // Contenido del menú (compartido entre drawer móvil y permanente)
+  async function handleLogout() {
+    setCerrandoSesion(true);
+    await logout();
+    setCerrandoSesion(false);
+    setConfirmarLogout(false);
+    info('Sesión cerrada correctamente');
+    navigate('/login');
+  }
+
   const contenidoDrawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ p: 2.5 }}>
@@ -69,8 +76,7 @@ export default function Layout() {
               selected={location.pathname.startsWith(opcion.ruta)}
               onClick={() => handleNavegar(opcion.ruta)}
               sx={{
-                mx: 1,
-                borderRadius: 1,
+                mx: 1, borderRadius: 1,
                 '&.Mui-selected': {
                   bgcolor: 'primary.main',
                   color: 'white',
@@ -88,7 +94,6 @@ export default function Layout() {
 
       <Divider />
 
-      {/* Tarjeta del usuario en la parte inferior */}
       <Box sx={{ p: 2 }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
@@ -106,7 +111,7 @@ export default function Layout() {
         <Button
           fullWidth
           startIcon={<LogoutIcon />}
-          onClick={logout}
+          onClick={() => setConfirmarLogout(true)}
           sx={{ mt: 1.5 }}
           color="inherit"
           size="small"
@@ -119,7 +124,6 @@ export default function Layout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f3f6fb' }}>
-      {/* AppBar solo visible en móvil */}
       <AppBar
         position="fixed"
         color="default"
@@ -140,7 +144,6 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
 
-      {/* Drawer permanente en escritorio */}
       <Drawer
         variant="permanent"
         sx={{
@@ -157,7 +160,6 @@ export default function Layout() {
         {contenidoDrawer}
       </Drawer>
 
-      {/* Drawer temporal en móvil */}
       <Drawer
         variant="temporary"
         open={drawerAbierto}
@@ -171,7 +173,6 @@ export default function Layout() {
         {contenidoDrawer}
       </Drawer>
 
-      {/* Contenido principal */}
       <Box
         component="main"
         sx={{
@@ -182,6 +183,17 @@ export default function Layout() {
       >
         <Outlet />
       </Box>
+
+      {/* Diálogo de confirmación de cierre de sesión */}
+      <DialogoConfirmacion
+        abierto={confirmarLogout}
+        titulo="Cerrar sesión"
+        mensaje="¿Seguro que quieres cerrar tu sesión? Tendrás que volver a iniciar sesión para acceder a la aplicación."
+        textoConfirmar="Cerrar sesión"
+        onConfirmar={handleLogout}
+        onCancelar={() => setConfirmarLogout(false)}
+        cargando={cerrandoSesion}
+      />
     </Box>
   );
 }

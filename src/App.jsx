@@ -1,24 +1,28 @@
 // src/App.jsx
 // -------------------------------------------------------
-// Configuración global y rutas.
+// Configuración global y rutas. Ahora con
+// NotificacionProvider envolviendo toda la aplicación.
 // -------------------------------------------------------
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
+import { NotificacionProvider } from './context/NotificacionContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
-import Login            from './pages/Login';
-import Register         from './pages/Register';
-import Dashboard        from './pages/Dashboard';
-import Afiliados        from './pages/Afiliados';
-import AfiliadoForm     from './pages/AfiliadoForm';
-import AfiliadoDetalle  from './pages/AfiliadoDetalle';
-import Incidencias      from './pages/Incidencias';
-import IncidenciaForm   from './pages/IncidenciaForm';
-import IncidenciaDetalle from './pages/IncidenciaDetalle';
-import Sectores         from './pages/Sectores';
+import Login              from './pages/Login';
+import Register           from './pages/Register';
+import RecuperarPassword  from './pages/RecuperarPassword';
+import ResetPassword      from './pages/ResetPassword';
+import Dashboard          from './pages/Dashboard';
+import Afiliados          from './pages/Afiliados';
+import AfiliadoForm       from './pages/AfiliadoForm';
+import AfiliadoDetalle    from './pages/AfiliadoDetalle';
+import Incidencias        from './pages/Incidencias';
+import IncidenciaForm     from './pages/IncidenciaForm';
+import IncidenciaDetalle  from './pages/IncidenciaDetalle';
+import Sectores           from './pages/Sectores';
 
 const theme = createTheme({
   palette: {
@@ -45,31 +49,37 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login"    element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <NotificacionProvider>
+          <AuthProvider>
+            <Routes>
+              {/* Rutas públicas */}
+              <Route path="/login"        element={<Login />} />
+              <Route path="/register"     element={<Register />} />
+              <Route path="/recuperar"    element={<RecuperarPassword />} />
+              <Route path="/restablecer"  element={<ResetPassword />} />
 
-            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              {/* Rutas protegidas */}
+              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
 
-              <Route path="/afiliados"            element={<Afiliados />} />
-              <Route path="/afiliados/nuevo"      element={<AfiliadoForm />} />
-              <Route path="/afiliados/:id"        element={<AfiliadoForm />} />
-              <Route path="/afiliados/:id/detalle" element={<AfiliadoDetalle />} />
+                <Route path="/afiliados"             element={<Afiliados />} />
+                <Route path="/afiliados/nuevo"       element={<AfiliadoForm />} />
+                <Route path="/afiliados/:id"         element={<AfiliadoForm />} />
+                <Route path="/afiliados/:id/detalle" element={<AfiliadoDetalle />} />
 
-              <Route path="/incidencias"            element={<Incidencias />} />
-              <Route path="/incidencias/nuevo"      element={<IncidenciaForm />} />
-              <Route path="/incidencias/:id"        element={<IncidenciaForm />} />
-              <Route path="/incidencias/:id/detalle" element={<IncidenciaDetalle />} />
+                <Route path="/incidencias"             element={<Incidencias />} />
+                <Route path="/incidencias/nuevo"       element={<IncidenciaForm />} />
+                <Route path="/incidencias/:id"         element={<IncidenciaForm />} />
+                <Route path="/incidencias/:id/detalle" element={<IncidenciaDetalle />} />
 
-              <Route path="/sectores" element={<Sectores />} />
-            </Route>
+                <Route path="/sectores" element={<Sectores />} />
+              </Route>
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </AuthProvider>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AuthProvider>
+        </NotificacionProvider>
       </BrowserRouter>
     </ThemeProvider>
   );
