@@ -1,7 +1,8 @@
 // src/components/Layout.jsx
 // -------------------------------------------------------
-// Layout principal con menú lateral, barra superior y
-// confirmación al cerrar sesión. Ahora con logo SVG.
+// Layout principal con menú lateral filtrado por rol:
+// - Admin: ve todas las secciones
+// - Delegado: NO ve Sectores
 // -------------------------------------------------------
 
 import { useState } from 'react';
@@ -9,7 +10,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, AppBar, Toolbar, IconButton, Typography, Drawer,
   List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Button, Avatar, Stack,
+  Divider, Button, Avatar, Stack, Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -21,27 +22,33 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useNotificacion } from '../context/NotificacionContext';
+import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from './DialogoConfirmacion';
 import Logo from './Logo';
 
 const ANCHO_DRAWER = 240;
 
-const opcionesMenu = [
-  { ruta: '/dashboard',   etiqueta: 'Dashboard',   icono: <DashboardIcon /> },
-  { ruta: '/afiliados',   etiqueta: 'Afiliados',   icono: <PeopleIcon /> },
-  { ruta: '/incidencias', etiqueta: 'Incidencias', icono: <AssignmentIcon /> },
-  { ruta: '/sectores',    etiqueta: 'Sectores',    icono: <CategoryIcon /> },
-];
-
 export default function Layout() {
   const { profile, logout } = useAuth();
   const { info } = useNotificacion();
+  const { esAdmin, puedeAdministrarSectores } = usePermisos();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [confirmarLogout, setConfirmarLogout] = useState(false);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
+
+  // Construimos el menú dinámicamente según el rol
+  const opcionesMenu = [
+    { ruta: '/dashboard',   etiqueta: 'Dashboard',   icono: <DashboardIcon /> },
+    { ruta: '/afiliados',   etiqueta: 'Afiliados',   icono: <PeopleIcon /> },
+    { ruta: '/incidencias', etiqueta: 'Incidencias', icono: <AssignmentIcon /> },
+    // Sectores solo lo ven los administradores
+    ...(puedeAdministrarSectores
+      ? [{ ruta: '/sectores', etiqueta: 'Sectores', icono: <CategoryIcon /> }]
+      : []),
+  ];
 
   function handleNavegar(ruta) {
     navigate(ruta);
@@ -59,7 +66,6 @@ export default function Layout() {
 
   const contenidoDrawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo arriba */}
       <Box sx={{ p: 2.5 }}>
         <Logo size="sm" />
       </Box>
@@ -93,16 +99,23 @@ export default function Layout() {
 
       <Box sx={{ p: 2 }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+          <Avatar sx={{
+            bgcolor: esAdmin ? 'secondary.main' : 'primary.main',
+            width: 36, height: 36
+          }}>
             {profile?.nombre?.[0]?.toUpperCase() || '?'}
           </Avatar>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="body2" fontWeight={600} noWrap>
               {profile?.nombre} {profile?.apellidos}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {profile?.rol === 'admin' ? 'Administrador' : 'Delegado'}
-            </Typography>
+            {/* Badge de rol con color distinto según admin/delegado */}
+            <Chip
+              label={esAdmin ? 'Administrador' : 'Delegado'}
+              size="small"
+              color={esAdmin ? 'secondary' : 'default'}
+              sx={{ height: 18, fontSize: '0.65rem', mt: 0.3 }}
+            />
           </Box>
         </Stack>
         <Button

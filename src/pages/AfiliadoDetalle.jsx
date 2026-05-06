@@ -1,12 +1,7 @@
 // src/pages/AfiliadoDetalle.jsx
 // -------------------------------------------------------
-// Ficha completa de un afiliado con:
-// - Datos personales y laborales en cabecera
-// - Resumen rápido (total de incidencias por estado)
-// - Tabla con todas sus incidencias asociadas
-//
-// Esta página es solo lectura. Para editar, hay un botón
-// que lleva al formulario de edición.
+// Ficha de afiliado con sus incidencias asociadas.
+// El botón "Editar" solo es visible para administradores.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -30,6 +25,7 @@ import {
   AssignmentLate as AssignmentLateIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { usePermisos } from '../lib/usePermisos';
 
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: 'warning' },
@@ -46,6 +42,7 @@ const PRIORIDADES = {
 export default function AfiliadoDetalle() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { puedeGestionarAfiliados } = usePermisos();
 
   const [afiliado, setAfiliado]       = useState(null);
   const [incidencias, setIncidencias] = useState([]);
@@ -58,7 +55,6 @@ export default function AfiliadoDetalle() {
     setCargando(true);
     setError(null);
 
-    // Cargamos el afiliado y sus incidencias en paralelo
     const [afilRes, incRes] = await Promise.all([
       supabase
         .from('afiliados')
@@ -102,7 +98,6 @@ export default function AfiliadoDetalle() {
     );
   }
 
-  // Conteo rápido de incidencias por estado
   const conteo = {
     total:      incidencias.length,
     pendiente:  incidencias.filter((i) => i.estado === 'pendiente').length,
@@ -110,7 +105,6 @@ export default function AfiliadoDetalle() {
     resuelta:   incidencias.filter((i) => i.estado === 'resuelta').length,
   };
 
-  // Iniciales para el avatar
   const iniciales = (afiliado.nombre[0] + afiliado.apellidos[0]).toUpperCase();
 
   return (
@@ -123,7 +117,6 @@ export default function AfiliadoDetalle() {
         Volver al listado
       </Button>
 
-      {/* === CABECERA con datos del afiliado === */}
       <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, mb: 3, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
           <Avatar sx={{
@@ -150,20 +143,22 @@ export default function AfiliadoDetalle() {
             </Typography>
           </Box>
 
-          <Tooltip title="Editar afiliado">
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={() => navigate(`/afiliados/${afiliado.id}`)}
-            >
-              Editar
-            </Button>
-          </Tooltip>
+          {/* Botón editar SOLO para admin */}
+          {puedeGestionarAfiliados && (
+            <Tooltip title="Editar afiliado">
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/afiliados/${afiliado.id}`)}
+              >
+                Editar
+              </Button>
+            </Tooltip>
+          )}
         </Stack>
 
         <Divider sx={{ my: 3 }} />
 
-        {/* Datos en grid */}
         <Grid container spacing={2}>
           <DatoCampo
             icono={<EmailIcon fontSize="small" />}
@@ -204,7 +199,6 @@ export default function AfiliadoDetalle() {
         )}
       </Paper>
 
-      {/* === RESUMEN DE INCIDENCIAS === */}
       <Grid container spacing={2} mb={3}>
         <TarjetaContador titulo="Total" valor={conteo.total}      color="text.primary" />
         <TarjetaContador titulo="Pendientes" valor={conteo.pendiente}  color="warning.main" />
@@ -212,7 +206,6 @@ export default function AfiliadoDetalle() {
         <TarjetaContador titulo="Resueltas" valor={conteo.resuelta}    color="success.main" />
       </Grid>
 
-      {/* === LISTA DE INCIDENCIAS === */}
       <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
         <Stack
           direction="row"
@@ -306,7 +299,6 @@ export default function AfiliadoDetalle() {
   );
 }
 
-// === Componente auxiliar: campo con icono y etiqueta ===
 function DatoCampo({ icono, etiqueta, valor }) {
   return (
     <Grid item xs={12} sm={6} md={4}>
@@ -325,7 +317,6 @@ function DatoCampo({ icono, etiqueta, valor }) {
   );
 }
 
-// === Tarjeta pequeña para los contadores ===
 function TarjetaContador({ titulo, valor, color }) {
   return (
     <Grid item xs={6} sm={3}>

@@ -1,8 +1,8 @@
 // src/pages/IncidenciaDetalle.jsx
 // -------------------------------------------------------
-// Vista de detalle de una incidencia. Ahora incluye una
-// sección de archivos adjuntos que aparece debajo del
-// detalle principal.
+// Vista de detalle de una incidencia. Solo el admin puede
+// eliminarla; los delegados pueden editar y cambiar estado
+// pero no borrar.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
+import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 import AdjuntosIncidencia from '../components/AdjuntosIncidencia';
 
@@ -42,6 +43,7 @@ export default function IncidenciaDetalle() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { exito, error: notificarError } = useNotificacion();
+  const { puedeEliminarIncidencias } = usePermisos();
 
   const [incidencia, setIncidencia] = useState(null);
   const [cargando, setCargando]     = useState(true);
@@ -143,15 +145,17 @@ export default function IncidenciaDetalle() {
             onClick={() => navigate(`/incidencias/${id}`)}>
             Editar
           </Button>
-          <Button variant="outlined" color="error" startIcon={<DeleteIcon />}
-            onClick={() => setABorrar(true)}>
-            Eliminar
-          </Button>
+          {/* Eliminar SOLO para admin */}
+          {puedeEliminarIncidencias && (
+            <Button variant="outlined" color="error" startIcon={<DeleteIcon />}
+              onClick={() => setABorrar(true)}>
+              Eliminar
+            </Button>
+          )}
         </Stack>
       </Stack>
 
       <Grid container spacing={3}>
-        {/* === Columna principal: detalles === */}
         <Grid item xs={12} md={8}>
           <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, border: 1, borderColor: 'divider' }}>
             <Stack direction="row" spacing={1} mb={1}>
@@ -165,9 +169,7 @@ export default function IncidenciaDetalle() {
               {incidencia.titulo}
             </Typography>
 
-            <Typography variant="overline" color="text.secondary">
-              Descripción
-            </Typography>
+            <Typography variant="overline" color="text.secondary">Descripción</Typography>
             <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
               {incidencia.descripcion}
             </Typography>
@@ -191,10 +193,8 @@ export default function IncidenciaDetalle() {
                 Cambiar estado:
               </Typography>
               <FormControl size="small" sx={{ minWidth: 180 }}>
-                <Select
-                  value={incidencia.estado}
-                  onChange={(e) => cambiarEstado(e.target.value)}
-                >
+                <Select value={incidencia.estado}
+                  onChange={(e) => cambiarEstado(e.target.value)}>
                   {Object.entries(ESTADOS).map(([k, v]) => (
                     <MenuItem key={k} value={k}>{v.label}</MenuItem>
                   ))}
@@ -204,7 +204,6 @@ export default function IncidenciaDetalle() {
           </Paper>
         </Grid>
 
-        {/* === Columna lateral: afiliado y fechas === */}
         <Grid item xs={12} md={4}>
           {af && (
             <Paper elevation={0} sx={{ p: 3, mb: 2, border: 1, borderColor: 'divider' }}>
@@ -240,29 +239,23 @@ export default function IncidenciaDetalle() {
                 )}
               </Stack>
 
-              <Button
-                fullWidth variant="outlined" size="small"
+              <Button fullWidth variant="outlined" size="small"
                 startIcon={<PersonIcon />}
                 component={RouterLink}
-                to={`/afiliados/${af.id}/detalle`}
-              >
+                to={`/afiliados/${af.id}/detalle`}>
                 Ver ficha completa
               </Button>
             </Paper>
           )}
 
           <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: 'divider' }}>
-            <Typography variant="overline" color="text.secondary">
-              Fechas
-            </Typography>
+            <Typography variant="overline" color="text.secondary">Fechas</Typography>
 
             <Stack spacing={2} mt={1.5}>
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <CalendarIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
                 <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Apertura
-                  </Typography>
+                  <Typography variant="caption" color="text.secondary">Apertura</Typography>
                   <Typography variant="body2">
                     {new Date(incidencia.fecha_apertura).toLocaleString('es-ES')}
                   </Typography>
@@ -273,9 +266,7 @@ export default function IncidenciaDetalle() {
                 <Stack direction="row" spacing={1.5} alignItems="flex-start">
                   <CalendarIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
                   <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Cierre
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary">Cierre</Typography>
                     <Typography variant="body2">
                       {new Date(incidencia.fecha_cierre).toLocaleString('es-ES')}
                     </Typography>
@@ -286,7 +277,6 @@ export default function IncidenciaDetalle() {
           </Paper>
         </Grid>
 
-        {/* === Sección de archivos adjuntos (ancho completo) === */}
         <Grid item xs={12}>
           <AdjuntosIncidencia incidenciaId={incidencia.id} />
         </Grid>

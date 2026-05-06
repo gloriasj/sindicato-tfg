@@ -1,7 +1,7 @@
 // src/pages/Incidencias.jsx
 // -------------------------------------------------------
-// Listado de incidencias con filtros, cambio rápido de
-// estado, exportación a PDF y enlaces al detalle.
+// Listado de incidencias. Crear/editar y cambiar estado lo
+// pueden hacer ambos roles, pero ELIMINAR solo el admin.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -24,6 +24,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { exportarPDF } from '../lib/exportarPDF';
 import { useNotificacion } from '../context/NotificacionContext';
+import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
 const ESTADOS = {
@@ -41,6 +42,7 @@ const PRIORIDADES = {
 export default function Incidencias() {
   const navigate = useNavigate();
   const { exito, error: notificarError } = useNotificacion();
+  const { puedeEliminarIncidencias } = usePermisos();
 
   const [incidencias, setIncidencias] = useState([]);
   const [sectores, setSectores]       = useState([]);
@@ -165,11 +167,9 @@ export default function Incidencias() {
             ancho: 45 },
           { clave: 'afiliado.sector.nombre', etiqueta: 'Sector',   ancho: 25 },
           { clave: 'estado',                etiqueta: 'Estado',
-            formato: (v) => ESTADOS[v]?.label ?? v,
-            ancho: 25 },
+            formato: (v) => ESTADOS[v]?.label ?? v, ancho: 25 },
           { clave: 'prioridad',             etiqueta: 'Prioridad',
-            formato: (v) => PRIORIDADES[v]?.label ?? v,
-            ancho: 22 },
+            formato: (v) => PRIORIDADES[v]?.label ?? v, ancho: 22 },
           { clave: 'fecha_apertura',        etiqueta: 'Apertura',
             formato: (v) => v ? new Date(v).toLocaleDateString('es-ES') : '',
             ancho: 25 },
@@ -360,12 +360,15 @@ export default function Incidencias() {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton size="small" color="error"
-                            onClick={() => setABorrar(i)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {/* Borrar SOLO para admin */}
+                        {puedeEliminarIncidencias && (
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error"
+                              onClick={() => setABorrar(i)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

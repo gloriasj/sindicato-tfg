@@ -1,8 +1,8 @@
 // src/pages/Afiliados.jsx
 // -------------------------------------------------------
-// Listado de afiliados con búsqueda, filtros, paginación,
-// exportación a PDF y enlace al detalle al hacer clic
-// sobre el nombre.
+// Listado de afiliados. Los botones de crear/editar/borrar
+// se muestran solo a los administradores. Los delegados ven
+// el listado en modo lectura + exportar PDF.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -20,15 +20,18 @@ import {
   Delete as DeleteIcon,
   PersonOff as PersonOffIcon,
   PictureAsPdf as PictureAsPdfIcon,
+  LockOutlined as LockIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 import { exportarPDF } from '../lib/exportarPDF';
 import { useNotificacion } from '../context/NotificacionContext';
+import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
 export default function Afiliados() {
   const navigate = useNavigate();
   const { exito, error: notificarError } = useNotificacion();
+  const { puedeGestionarAfiliados, esDelegado } = usePermisos();
 
   const [afiliados, setAfiliados]   = useState([]);
   const [sectores, setSectores]     = useState([]);
@@ -109,7 +112,6 @@ export default function Afiliados() {
     }
   }
 
-  // Genera y descarga el PDF con los afiliados filtrados
   function handleExportarPDF() {
     try {
       const fecha = new Date().toISOString().slice(0, 10);
@@ -167,18 +169,33 @@ export default function Afiliados() {
               Exportar PDF
             </Button>
           </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/afiliados/nuevo')}
-            size="large"
-          >
-            Nuevo afiliado
-          </Button>
+          {/* Botón de "Nuevo afiliado" SOLO para admin */}
+          {puedeGestionarAfiliados && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/afiliados/nuevo')}
+              size="large"
+            >
+              Nuevo afiliado
+            </Button>
+          )}
         </Stack>
       </Stack>
 
-      {/* Filtros */}
+      {/* Aviso para delegados explicando el modo lectura */}
+      {esDelegado && (
+        <Alert
+          severity="info"
+          icon={<LockIcon fontSize="small" />}
+          sx={{ mb: 2 }}
+        >
+          <strong>Modo lectura.</strong> La gestión de afiliados
+          está reservada a los administradores. Tú puedes consultar
+          el listado, ver fichas y exportar informes.
+        </Alert>
+      )}
+
       <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
           <TextField
@@ -243,15 +260,16 @@ export default function Afiliados() {
                     <TableCell><strong>Empresa</strong></TableCell>
                     <TableCell><strong>Email</strong></TableCell>
                     <TableCell><strong>Estado</strong></TableCell>
-                    <TableCell align="right"><strong>Acciones</strong></TableCell>
+                    {/* Columna acciones SOLO para admin */}
+                    {puedeGestionarAfiliados && (
+                      <TableCell align="right"><strong>Acciones</strong></TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {enPagina.map((a) => (
                     <TableRow key={a.id} hover>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>
-                        {a.dni}
-                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{a.dni}</TableCell>
                       <TableCell>
                         <MuiLink
                           component="button"
@@ -263,11 +281,7 @@ export default function Afiliados() {
                         </MuiLink>
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={a.sector?.nombre ?? '—'}
-                          size="small"
-                          variant="outlined"
-                        />
+                        <Chip label={a.sector?.nombre ?? '—'} size="small" variant="outlined" />
                       </TableCell>
                       <TableCell>{a.empresa || '—'}</TableCell>
                       <TableCell>{a.email || '—'}</TableCell>
@@ -278,20 +292,23 @@ export default function Afiliados() {
                           <Chip label="Inactivo" size="small" color="default" />
                         )}
                       </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Editar">
-                          <IconButton size="small"
-                            onClick={() => navigate(`/afiliados/${a.id}`)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton size="small" color="error"
-                            onClick={() => setABorrar(a)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
+                      {/* Acciones SOLO para admin */}
+                      {puedeGestionarAfiliados && (
+                        <TableCell align="right">
+                          <Tooltip title="Editar">
+                            <IconButton size="small"
+                              onClick={() => navigate(`/afiliados/${a.id}`)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error"
+                              onClick={() => setABorrar(a)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
