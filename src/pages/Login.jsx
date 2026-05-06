@@ -14,8 +14,7 @@ import {
   Divider, Container,
 } from '@mui/material';
 import {
-  CheckCircleOutline as CheckIcon,
-  PeopleOutlined as PeopleIcon,
+  PeopleAltOutlined as PeopleIcon,
   AssignmentOutlined as AssignmentIcon,
   InsightsOutlined as InsightsIcon,
 } from '@mui/icons-material';

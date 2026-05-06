@@ -1,18 +1,16 @@
 // src/pages/IncidenciaDetalle.jsx
 // -------------------------------------------------------
-// Vista de detalle de una incidencia. Muestra toda la
-// información: datos del afiliado afectado, descripción
-// completa, estado, prioridad, fechas y resolución.
-//
-// Permite cambiar el estado rápidamente y editar.
+// Vista de detalle de una incidencia. Ahora incluye una
+// sección de archivos adjuntos que aparece debajo del
+// detalle principal.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Paper, Grid,
-  Chip, Avatar, Divider, Alert, CircularProgress, IconButton,
-  MenuItem, Select, FormControl, InputLabel,
+  Chip, Avatar, Divider, Alert, CircularProgress,
+  MenuItem, Select, FormControl,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -24,7 +22,9 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
+import AdjuntosIncidencia from '../components/AdjuntosIncidencia';
 
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: 'warning' },
@@ -41,6 +41,7 @@ const PRIORIDADES = {
 export default function IncidenciaDetalle() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { exito, error: notificarError } = useNotificacion();
 
   const [incidencia, setIncidencia] = useState(null);
   const [cargando, setCargando]     = useState(true);
@@ -85,9 +86,10 @@ export default function IncidenciaDetalle() {
       .eq('id', id);
 
     if (error) {
-      setError('No se pudo actualizar el estado: ' + error.message);
+      notificarError('No se pudo actualizar el estado: ' + error.message);
     } else {
       setIncidencia((prev) => ({ ...prev, ...datos }));
+      exito(`Estado actualizado a "${ESTADOS[nuevoEstado].label}"`);
     }
   }
 
@@ -99,10 +101,11 @@ export default function IncidenciaDetalle() {
       .eq('id', id);
 
     if (error) {
-      setError('No se pudo eliminar: ' + error.message);
+      notificarError('No se pudo eliminar: ' + error.message);
       setBorrando(false);
       setABorrar(false);
     } else {
+      exito('Incidencia eliminada correctamente');
       navigate('/incidencias');
     }
   }
@@ -127,53 +130,35 @@ export default function IncidenciaDetalle() {
   }
 
   const af = incidencia.afiliado;
-  const iniciales = af
-    ? (af.nombre[0] + af.apellidos[0]).toUpperCase()
-    : '??';
+  const iniciales = af ? (af.nombre[0] + af.apellidos[0]).toUpperCase() : '??';
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/incidencias')}
-        >
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/incidencias')}>
           Volver al listado
         </Button>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={() => navigate(`/incidencias/${id}`)}
-          >
+          <Button variant="outlined" startIcon={<EditIcon />}
+            onClick={() => navigate(`/incidencias/${id}`)}>
             Editar
           </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={() => setABorrar(true)}
-          >
+          <Button variant="outlined" color="error" startIcon={<DeleteIcon />}
+            onClick={() => setABorrar(true)}>
             Eliminar
           </Button>
         </Stack>
       </Stack>
 
       <Grid container spacing={3}>
-        {/* === Columna principal: detalles de la incidencia === */}
+        {/* === Columna principal: detalles === */}
         <Grid item xs={12} md={8}>
           <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, border: 1, borderColor: 'divider' }}>
             <Stack direction="row" spacing={1} mb={1}>
-              <Chip
-                label={ESTADOS[incidencia.estado].label}
-                color={ESTADOS[incidencia.estado].color}
-                size="small"
-              />
-              <Chip
-                label={`Prioridad ${PRIORIDADES[incidencia.prioridad].label.toLowerCase()}`}
-                color={PRIORIDADES[incidencia.prioridad].color}
-                size="small"
-              />
+              <Chip label={ESTADOS[incidencia.estado].label}
+                color={ESTADOS[incidencia.estado].color} size="small" />
+              <Chip label={`Prioridad ${PRIORIDADES[incidencia.prioridad].label.toLowerCase()}`}
+                color={PRIORIDADES[incidencia.prioridad].color} size="small" />
             </Stack>
 
             <Typography variant="h4" fontWeight={600} mb={2}>
@@ -201,7 +186,6 @@ export default function IncidenciaDetalle() {
 
             <Divider sx={{ my: 3 }} />
 
-            {/* Cambio rápido de estado */}
             <Stack direction="row" spacing={2} alignItems="center">
               <Typography variant="body2" color="text.secondary">
                 Cambiar estado:
@@ -220,9 +204,8 @@ export default function IncidenciaDetalle() {
           </Paper>
         </Grid>
 
-        {/* === Columna lateral: datos del afiliado y fechas === */}
+        {/* === Columna lateral: afiliado y fechas === */}
         <Grid item xs={12} md={4}>
-          {/* Tarjeta del afiliado */}
           {af && (
             <Paper elevation={0} sx={{ p: 3, mb: 2, border: 1, borderColor: 'divider' }}>
               <Typography variant="overline" color="text.secondary">
@@ -258,9 +241,7 @@ export default function IncidenciaDetalle() {
               </Stack>
 
               <Button
-                fullWidth
-                variant="outlined"
-                size="small"
+                fullWidth variant="outlined" size="small"
                 startIcon={<PersonIcon />}
                 component={RouterLink}
                 to={`/afiliados/${af.id}/detalle`}
@@ -270,7 +251,6 @@ export default function IncidenciaDetalle() {
             </Paper>
           )}
 
-          {/* Tarjeta de fechas */}
           <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: 'divider' }}>
             <Typography variant="overline" color="text.secondary">
               Fechas
@@ -305,12 +285,17 @@ export default function IncidenciaDetalle() {
             </Stack>
           </Paper>
         </Grid>
+
+        {/* === Sección de archivos adjuntos (ancho completo) === */}
+        <Grid item xs={12}>
+          <AdjuntosIncidencia incidenciaId={incidencia.id} />
+        </Grid>
       </Grid>
 
       <DialogoConfirmacion
         abierto={aBorrar}
         titulo="Eliminar incidencia"
-        mensaje={`¿Seguro que quieres eliminar la incidencia "${incidencia.titulo}"? Esta acción no se puede deshacer.`}
+        mensaje={`¿Seguro que quieres eliminar la incidencia "${incidencia.titulo}"? También se borrarán todos los archivos adjuntos. Esta acción no se puede deshacer.`}
         textoConfirmar="Eliminar"
         onConfirmar={confirmarBorrado}
         onCancelar={() => setABorrar(false)}
