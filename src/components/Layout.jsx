@@ -189,7 +189,9 @@ export default function Layout() {
         sx={{
           flexGrow: 1,
           width: { md: `calc(100% - ${ANCHO_DRAWER}px)` },
+          ml: { md: `${ANCHO_DRAWER}px` },
           mt: { xs: 7, md: 0 },
+          minHeight: '100vh', 
         }}
       >
         <Outlet />
