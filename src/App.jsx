@@ -9,6 +9,7 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import AdminRoute from './components/AdminRoute'; // <-- NUEVO: Importamos la protección de rutas admin
 
 import Login              from './pages/Login';
 import Register           from './pages/Register';
@@ -22,6 +23,7 @@ import Incidencias        from './pages/Incidencias';
 import IncidenciaForm     from './pages/IncidenciaForm';
 import IncidenciaDetalle  from './pages/IncidenciaDetalle';
 import Sectores           from './pages/Sectores';
+import Usuarios           from './pages/Usuarios'; // <-- NUEVO: Importamos la página de usuarios
 
 // =========================================================
 // TEMA REFINADO
@@ -56,7 +58,7 @@ const theme = createTheme({
 
   typography: {
     fontFamily:
-      '"Inter", "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif',
+        '"Inter", "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif',
     h4: { fontWeight: 700, letterSpacing: '-0.02em' },
     h5: { fontWeight: 700, letterSpacing: '-0.01em' },
     h6: { fontWeight: 600, letterSpacing: '-0.01em' },
@@ -191,39 +193,43 @@ const theme = createTheme({
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <NotificacionProvider>
-          <AuthProvider>
-            <Routes>
-              <Route path="/login"        element={<Login />} />
-              <Route path="/register"     element={<Register />} />
-              <Route path="/recuperar"    element={<RecuperarPassword />} />
-              <Route path="/restablecer"  element={<ResetPassword />} />
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <NotificacionProvider>
+            <AuthProvider>
+              <Routes>
+                <Route path="/login"        element={<Login />} />
+                <Route path="/register"     element={<Register />} />
+                <Route path="/recuperar"    element={<RecuperarPassword />} />
+                <Route path="/restablecer"  element={<ResetPassword />} />
 
-              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
 
-                <Route path="/afiliados"             element={<Afiliados />} />
-                <Route path="/afiliados/nuevo"       element={<AfiliadoForm />} />
-                <Route path="/afiliados/:id"         element={<AfiliadoForm />} />
-                <Route path="/afiliados/:id/detalle" element={<AfiliadoDetalle />} />
+                  <Route path="/afiliados"             element={<Afiliados />} />
+                  <Route path="/afiliados/nuevo"       element={<AfiliadoForm />} />
+                  <Route path="/afiliados/:id"         element={<AfiliadoForm />} />
+                  <Route path="/afiliados/:id/detalle" element={<AfiliadoDetalle />} />
 
-                <Route path="/incidencias"             element={<Incidencias />} />
-                <Route path="/incidencias/nuevo"       element={<IncidenciaForm />} />
-                <Route path="/incidencias/:id"         element={<IncidenciaForm />} />
-                <Route path="/incidencias/:id/detalle" element={<IncidenciaDetalle />} />
+                  <Route path="/incidencias"             element={<Incidencias />} />
+                  <Route path="/incidencias/nuevo"       element={<IncidenciaForm />} />
+                  <Route path="/incidencias/:id"         element={<IncidenciaForm />} />
+                  <Route path="/incidencias/:id/detalle" element={<IncidenciaDetalle />} />
 
-                <Route path="/sectores" element={<Sectores />} />
-              </Route>
+                  {/* <-- Rutas exclusivas para el Administrador --> */}
+                  <Route element={<AdminRoute />}>
+                    <Route path="/sectores" element={<Sectores />} />
+                    <Route path="/usuarios" element={<Usuarios />} />
+                  </Route>
+                </Route>
 
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </AuthProvider>
-        </NotificacionProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </AuthProvider>
+          </NotificacionProvider>
+        </BrowserRouter>
+      </ThemeProvider>
   );
 }
