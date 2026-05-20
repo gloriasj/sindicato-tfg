@@ -1,13 +1,4 @@
 // src/lib/usePermisos.js
-// -------------------------------------------------------
-// Hook que devuelve los permisos del usuario logueado
-// según su rol. Centraliza la lógica de permisos para que
-// sea fácil cambiar las reglas en un solo sitio.
-//
-// Uso:
-//   const { esAdmin, puedeEliminar, puedeGestionarAfiliados } = usePermisos();
-//   if (esAdmin) { ... }
-// -------------------------------------------------------
 
 import { useAuth } from '../context/AuthContext';
 
@@ -23,17 +14,19 @@ export function usePermisos() {
     esDelegado,
     rol: profile?.rol ?? null,
 
-    // Permisos sobre afiliados
-    puedeGestionarAfiliados: esAdmin,    // crear/editar/borrar
-    puedeVerAfiliados:       true,        // ambos pueden listar
+    // Permisos sobre afiliados (CRUD completo para ambos)
+    puedeGestionarAfiliados: esAdmin || esDelegado,
+    puedeVerAfiliados:       true,
 
-    // Permisos sobre incidencias
-    puedeCrearIncidencias:   true,        // ambos
-    puedeEditarIncidencias:  true,        // ambos
-    puedeEliminarIncidencias: esAdmin,    // SOLO admin
-    puedeCambiarEstado:      true,        // ambos
+    // Permisos sobre incidencias (CRUD completo para ambos)
+    puedeGestionarIncidencias: esAdmin || esDelegado,
+    puedeCrearIncidencias:     true,
+    puedeEditarIncidencias:    true,
+    puedeEliminarIncidencias:  esAdmin || esDelegado,
+    puedeCambiarEstado:        true,
 
-    // Administración del sistema
+    // Administración del sistema (EXCLUSIVO para Administrador)
     puedeAdministrarSectores: esAdmin,
+    puedeGestionarUsuarios:   esAdmin, // Ver, desactivar y cambiar roles de usuarios
   };
 }

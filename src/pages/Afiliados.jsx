@@ -1,8 +1,8 @@
 // src/pages/Afiliados.jsx
 // -------------------------------------------------------
-// Listado de afiliados. Los botones de crear/editar/borrar
-// se muestran solo a los administradores. Los delegados ven
-// el listado en modo lectura + exportar PDF.
+// Listado de afiliados. La gestión completa (crear, editar,
+// borrar) está disponible tanto para administradores como
+// para delegados, según la matriz de permisos.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -20,7 +20,6 @@ import {
   Delete as DeleteIcon,
   PersonOff as PersonOffIcon,
   PictureAsPdf as PictureAsPdfIcon,
-  LockOutlined as LockIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 import { exportarPDF } from '../lib/exportarPDF';
@@ -31,7 +30,9 @@ import DialogoConfirmacion from '../components/DialogoConfirmacion';
 export default function Afiliados() {
   const navigate = useNavigate();
   const { exito, error: notificarError } = useNotificacion();
-  const { puedeGestionarAfiliados, esDelegado } = usePermisos();
+
+  // Aquí ya solo necesitamos preguntar si tiene permiso, sin importar el rol
+  const { puedeGestionarAfiliados } = usePermisos();
 
   const [afiliados, setAfiliados]   = useState([]);
   const [sectores, setSectores]     = useState([]);
@@ -54,9 +55,9 @@ export default function Afiliados() {
 
     const [afilRes, sectRes] = await Promise.all([
       supabase
-        .from('afiliados')
-        .select('*, sector:sectores(id, nombre)')
-        .order('apellidos', { ascending: true }),
+          .from('afiliados')
+          .select('*, sector:sectores(id, nombre)')
+          .order('apellidos', { ascending: true }),
       supabase.from('sectores').select('*').order('nombre'),
     ]);
 
@@ -75,10 +76,10 @@ export default function Afiliados() {
       if (busqueda) {
         const t = busqueda.toLowerCase();
         const coincide =
-          a.nombre.toLowerCase().includes(t) ||
-          a.apellidos.toLowerCase().includes(t) ||
-          a.dni.toLowerCase().includes(t) ||
-          (a.email?.toLowerCase().includes(t) ?? false);
+            a.nombre.toLowerCase().includes(t) ||
+            a.apellidos.toLowerCase().includes(t) ||
+            a.dni.toLowerCase().includes(t) ||
+            (a.email?.toLowerCase().includes(t) ?? false);
         if (!coincide) return false;
       }
       if (filtroSector !== 'todos' && a.sector_id !== Number(filtroSector)) return false;
@@ -89,17 +90,17 @@ export default function Afiliados() {
   }, [afiliados, busqueda, filtroSector, filtroEstado]);
 
   const enPagina = afiliadosFiltrados.slice(
-    pagina * filasPorPagina,
-    pagina * filasPorPagina + filasPorPagina,
+      pagina * filasPorPagina,
+      pagina * filasPorPagina + filasPorPagina,
   );
 
   async function confirmarBorrado() {
     if (!aBorrar) return;
     setBorrando(true);
     const { error } = await supabase
-      .from('afiliados')
-      .delete()
-      .eq('id', aBorrar.id);
+        .from('afiliados')
+        .delete()
+        .eq('id', aBorrar.id);
 
     setBorrando(false);
     setABorrar(null);
@@ -143,208 +144,195 @@ export default function Afiliados() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
-        spacing={2}
-        mb={3}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={600}>Afiliados</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {afiliadosFiltrados.length} resultado(s) ·{' '}
-            {afiliados.filter((a) => a.activo).length} activos en total
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Tooltip title="Descargar listado en PDF">
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdfIcon />}
-              onClick={handleExportarPDF}
-              disabled={afiliadosFiltrados.length === 0}
-            >
-              Exportar PDF
-            </Button>
-          </Tooltip>
-          {/* Botón de "Nuevo afiliado" SOLO para admin */}
-          {puedeGestionarAfiliados && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/afiliados/nuevo')}
-              size="large"
-            >
-              Nuevo afiliado
-            </Button>
-          )}
-        </Stack>
-      </Stack>
-
-      {/* Aviso para delegados explicando el modo lectura */}
-      {esDelegado && (
-        <Alert
-          severity="info"
-          icon={<LockIcon fontSize="small" />}
-          sx={{ mb: 2 }}
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            spacing={2}
+            mb={3}
         >
-          <strong>Modo lectura.</strong> La gestión de afiliados
-          está reservada a los administradores. Tú puedes consultar
-          el listado, ver fichas y exportar informes.
-        </Alert>
-      )}
-
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField
-            placeholder="Buscar por nombre, DNI o email..."
-            value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
-            size="small"
-            sx={{ flex: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField select size="small" label="Sector"
-            value={filtroSector}
-            onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 160 }}
-          >
-            <MenuItem value="todos">Todos los sectores</MenuItem>
-            {sectores.map((s) => (
-              <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="Estado"
-            value={filtroEstado}
-            onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 140 }}
-          >
-            <MenuItem value="todos">Todos</MenuItem>
-            <MenuItem value="activos">Activos</MenuItem>
-            <MenuItem value="inactivos">Inactivos</MenuItem>
-          </TextField>
-        </Stack>
-      </Paper>
-
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-        {cargando ? (
-          <Box sx={{ p: 6, textAlign: 'center' }}>
-            <CircularProgress />
-          </Box>
-        ) : afiliadosFiltrados.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center' }}>
-            <PersonOffIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-            <Typography color="text.secondary" mt={1}>
-              No hay afiliados que coincidan con los filtros.
+          <Box>
+            <Typography variant="h4" fontWeight={600}>Afiliados</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {afiliadosFiltrados.length} resultado(s) ·{' '}
+              {afiliados.filter((a) => a.activo).length} activos en total
             </Typography>
           </Box>
-        ) : (
-          <>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>DNI</strong></TableCell>
-                    <TableCell><strong>Nombre</strong></TableCell>
-                    <TableCell><strong>Sector</strong></TableCell>
-                    <TableCell><strong>Empresa</strong></TableCell>
-                    <TableCell><strong>Email</strong></TableCell>
-                    <TableCell><strong>Estado</strong></TableCell>
-                    {/* Columna acciones SOLO para admin */}
-                    {puedeGestionarAfiliados && (
-                      <TableCell align="right"><strong>Acciones</strong></TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {enPagina.map((a) => (
-                    <TableRow key={a.id} hover>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>{a.dni}</TableCell>
-                      <TableCell>
-                        <MuiLink
-                          component="button"
-                          underline="hover"
-                          onClick={() => navigate(`/afiliados/${a.id}/detalle`)}
-                          sx={{ textAlign: 'left', color: 'primary.main', fontWeight: 500 }}
-                        >
-                          {a.apellidos}, {a.nombre}
-                        </MuiLink>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={a.sector?.nombre ?? '—'} size="small" variant="outlined" />
-                      </TableCell>
-                      <TableCell>{a.empresa || '—'}</TableCell>
-                      <TableCell>{a.email || '—'}</TableCell>
-                      <TableCell>
-                        {a.activo ? (
-                          <Chip label="Activo" size="small" color="success" />
-                        ) : (
-                          <Chip label="Inactivo" size="small" color="default" />
-                        )}
-                      </TableCell>
-                      {/* Acciones SOLO para admin */}
-                      {puedeGestionarAfiliados && (
-                        <TableCell align="right">
-                          <Tooltip title="Editar">
-                            <IconButton size="small"
-                              onClick={() => navigate(`/afiliados/${a.id}`)}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton size="small" color="error"
-                              onClick={() => setABorrar(a)}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+          <Stack direction="row" spacing={1.5}>
+            <Tooltip title="Descargar listado en PDF">
+              <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={handleExportarPDF}
+                  disabled={afiliadosFiltrados.length === 0}
+              >
+                Exportar PDF
+              </Button>
+            </Tooltip>
+            {/* El botón se muestra si tiene permisos (Admin y Delegado) */}
+            {puedeGestionarAfiliados && (
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/afiliados/nuevo')}
+                    size="large"
+                >
+                  Nuevo afiliado
+                </Button>
+            )}
+          </Stack>
+        </Stack>
 
-            <TablePagination
-              component="div"
-              count={afiliadosFiltrados.length}
-              page={pagina}
-              onPageChange={(_e, p) => setPagina(p)}
-              rowsPerPage={filasPorPagina}
-              onRowsPerPageChange={(e) => {
-                setFilasPorPagina(Number(e.target.value));
-                setPagina(0);
-              }}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Filas por página:"
+        <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+                placeholder="Buscar por nombre, DNI o email..."
+                value={busqueda}
+                onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
+                size="small"
+                sx={{ flex: 1 }}
+                InputProps={{
+                  startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                  ),
+                }}
             />
-          </>
-        )}
-      </Paper>
+            <TextField select size="small" label="Sector"
+                       value={filtroSector}
+                       onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
+                       sx={{ minWidth: 160 }}
+            >
+              <MenuItem value="todos">Todos los sectores</MenuItem>
+              {sectores.map((s) => (
+                  <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select size="small" label="Estado"
+                       value={filtroEstado}
+                       onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
+                       sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="activos">Activos</MenuItem>
+              <MenuItem value="inactivos">Inactivos</MenuItem>
+            </TextField>
+          </Stack>
+        </Paper>
 
-      <DialogoConfirmacion
-        abierto={!!aBorrar}
-        titulo="Eliminar afiliado"
-        mensaje={
-          aBorrar
-            ? `¿Seguro que quieres eliminar a ${aBorrar.nombre} ${aBorrar.apellidos}? Esta acción también eliminará todas sus incidencias y no se puede deshacer.`
-            : ''
-        }
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarBorrado}
-        onCancelar={() => setABorrar(null)}
-        cargando={borrando}
-      />
-    </Container>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+          {cargando ? (
+              <Box sx={{ p: 6, textAlign: 'center' }}>
+                <CircularProgress />
+              </Box>
+          ) : afiliadosFiltrados.length === 0 ? (
+              <Box sx={{ p: 6, textAlign: 'center' }}>
+                <PersonOffIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                <Typography color="text.secondary" mt={1}>
+                  No hay afiliados que coincidan con los filtros.
+                </Typography>
+              </Box>
+          ) : (
+              <>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell><strong>DNI</strong></TableCell>
+                        <TableCell><strong>Nombre</strong></TableCell>
+                        <TableCell><strong>Sector</strong></TableCell>
+                        <TableCell><strong>Empresa</strong></TableCell>
+                        <TableCell><strong>Email</strong></TableCell>
+                        <TableCell><strong>Estado</strong></TableCell>
+                        {/* Columna acciones para los que tienen permiso */}
+                        {puedeGestionarAfiliados && (
+                            <TableCell align="right"><strong>Acciones</strong></TableCell>
+                        )}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {enPagina.map((a) => (
+                          <TableRow key={a.id} hover>
+                            <TableCell sx={{ fontFamily: 'monospace' }}>{a.dni}</TableCell>
+                            <TableCell>
+                              <MuiLink
+                                  component="button"
+                                  underline="hover"
+                                  onClick={() => navigate(`/afiliados/${a.id}/detalle`)}
+                                  sx={{ textAlign: 'left', color: 'primary.main', fontWeight: 500 }}
+                              >
+                                {a.apellidos}, {a.nombre}
+                              </MuiLink>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={a.sector?.nombre ?? '—'} size="small" variant="outlined" />
+                            </TableCell>
+                            <TableCell>{a.empresa || '—'}</TableCell>
+                            <TableCell>{a.email || '—'}</TableCell>
+                            <TableCell>
+                              {a.activo ? (
+                                  <Chip label="Activo" size="small" color="success" />
+                              ) : (
+                                  <Chip label="Inactivo" size="small" color="default" />
+                              )}
+                            </TableCell>
+                            {/* Acciones para los que tienen permiso */}
+                            {puedeGestionarAfiliados && (
+                                <TableCell align="right">
+                                  <Tooltip title="Editar">
+                                    <IconButton size="small"
+                                                onClick={() => navigate(`/afiliados/${a.id}`)}>
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Eliminar">
+                                    <IconButton size="small" color="error"
+                                                onClick={() => setABorrar(a)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </TableCell>
+                            )}
+                          </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <TablePagination
+                    component="div"
+                    count={afiliadosFiltrados.length}
+                    page={pagina}
+                    onPageChange={(_e, p) => setPagina(p)}
+                    rowsPerPage={filasPorPagina}
+                    onRowsPerPageChange={(e) => {
+                      setFilasPorPagina(Number(e.target.value));
+                      setPagina(0);
+                    }}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                    labelRowsPerPage="Filas por página:"
+                />
+              </>
+          )}
+        </Paper>
+
+        <DialogoConfirmacion
+            abierto={!!aBorrar}
+            titulo="Eliminar afiliado"
+            mensaje={
+              aBorrar
+                  ? `¿Seguro que quieres eliminar a ${aBorrar.nombre} ${aBorrar.apellidos}? Esta acción también eliminará todas sus incidencias y no se puede deshacer.`
+                  : ''
+            }
+            textoConfirmar="Eliminar"
+            onConfirmar={confirmarBorrado}
+            onCancelar={() => setABorrar(null)}
+            cargando={borrando}
+        />
+      </Container>
   );
 }

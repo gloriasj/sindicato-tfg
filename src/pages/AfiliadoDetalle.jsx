@@ -143,7 +143,7 @@ export default function AfiliadoDetalle() {
             </Typography>
           </Box>
 
-          {/* Botón editar SOLO para admin */}
+          {/* Botón editar para roles con permisos de gestion (Admin y Delegado) */}
           {puedeGestionarAfiliados && (
             <Tooltip title="Editar afiliado">
               <Button
