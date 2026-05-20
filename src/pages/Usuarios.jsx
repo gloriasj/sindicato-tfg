@@ -2,7 +2,7 @@
 // -------------------------------------------------------
 // Panel de gestión de usuarios del sistema.
 // Acceso exclusivo para el Administrador. Permite listar usuarios,
-// modificar su rol operativo y activar/desactivar sus cuentas.
+// modificar su rol operativo, cambiar su email y activar/desactivar cuentas.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -10,9 +10,14 @@ import {
     Container, Typography, Box, Paper, Table, TableBody,
     TableCell, TableContainer, TableHead, TableRow, MenuItem,
     Select, Switch, FormControlLabel, CircularProgress, Alert,
-    Avatar, Stack
+    Avatar, Stack, IconButton, Tooltip, Dialog, DialogTitle,
+    DialogContent, DialogActions, TextField, Button
 } from '@mui/material';
-import { AdminPanelSettings as AdminIcon, Badge as DelegadoIcon } from '@mui/icons-material';
+import {
+    AdminPanelSettings as AdminIcon,
+    Badge as DelegadoIcon,
+    Edit as EditIcon
+} from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
@@ -23,6 +28,12 @@ export default function Usuarios() {
     const [cargando, setCargando] = useState(true);
     const [error, setError]       = useState(null);
 
+    // Estados para el Modal de Editar Email
+    const [modalAbierto, setModalAbierto] = useState(false);
+    const [usuarioEditar, setUsuarioEditar] = useState(null);
+    const [nuevoEmail, setNuevoEmail]       = useState('');
+    const [guardandoEmail, setGuardandoEmail] = useState(false);
+
     useEffect(() => {
         cargarUsuarios();
     }, []);
@@ -31,7 +42,6 @@ export default function Usuarios() {
         setCargando(true);
         setError(null);
 
-        // Consultamos la tabla profiles de Supabase
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -62,7 +72,6 @@ export default function Usuarios() {
     }
 
     async function cambiarEstadoActivo(usuarioId, nuevoEstado) {
-        // Nota: Asumimos que tu tabla profiles tiene una columna booleana 'activo'
         const { error } = await supabase
             .from('profiles')
             .update({ activo: nuevoEstado })
@@ -78,12 +87,43 @@ export default function Usuarios() {
         }
     }
 
+    // --- LÓGICA PARA ABRIR MODAL Y GUARDAR EL EMAIL ---
+    function abrirModalEmail(usuario) {
+        setUsuarioEditar(usuario);
+        setNuevoEmail(usuario.email || '');
+        setModalAbierto(true);
+    }
+
+    async function guardarEmail(e) {
+        e.preventDefault();
+        if (!nuevoEmail.trim()) return;
+
+        setGuardandoEmail(true);
+
+        const { error } = await supabase
+            .from('profiles')
+            .update({ email: nuevoEmail.trim() })
+            .eq('id', usuarioEditar.id);
+
+        setGuardandoEmail(false);
+
+        if (error) {
+            notificarError('No se pudo actualizar el email: ' + error.message);
+        } else {
+            setUsuarios((prev) =>
+                prev.map((u) => (u.id === usuarioEditar.id ? { ...u, email: nuevoEmail.trim() } : u))
+            );
+            exito('Correo electrónico actualizado con éxito');
+            setModalAbierto(false);
+        }
+    }
+
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
             <Box mb={4}>
                 <Typography variant="h4" fontWeight={600}>Gestión de Usuarios</Typography>
                 <Typography variant="body1" color="text.secondary">
-                    Control de acceso, asignación de roles y activación de cuentas del personal sindical.
+                    Control de acceso, edición de credenciales y activación de cuentas del personal sindical.
                 </Typography>
             </Box>
 
@@ -105,6 +145,7 @@ export default function Usuarios() {
                                     <TableCell><strong>Email</strong></TableCell>
                                     <TableCell><strong>Rol del Sistema</strong></TableCell>
                                     <TableCell><strong>Estado de Cuenta</strong></TableCell>
+                                    <TableCell align="right"><strong>Acciones</strong></TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -153,6 +194,13 @@ export default function Usuarios() {
                                                     label={u.activo ?? true ? 'Activo' : 'Inactivo'}
                                                 />
                                             </TableCell>
+                                            <TableCell align="right">
+                                                <Tooltip title="Editar Email">
+                                                    <IconButton size="small" onClick={() => abrirModalEmail(u)}>
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
                                         </TableRow>
                                     );
                                 })}
@@ -161,6 +209,34 @@ export default function Usuarios() {
                     </TableContainer>
                 )}
             </Paper>
+
+            {/* MODAL PARA EDITAR EMAIL */}
+            <Dialog open={modalAbierto} onClose={() => !guardandoEmail && setModalAbierto(false)} fullWidth maxWidth="xs">
+                <form onSubmit={guardarEmail}>
+                    <DialogTitle>Modificar Correo Electrónico</DialogTitle>
+                    <DialogContent dividers>
+                        <Typography variant="body2" color="text.secondary" mb={2}>
+                            Estás editando las credenciales de contacto de <strong>{usuarioEditar?.nombre} {usuarioEditar?.apellidos}</strong>.
+                        </Typography>
+                        <TextField
+                            label="Nuevo Email"
+                            type="email"
+                            required
+                            fullWidth
+                            value={nuevoEmail}
+                            onChange={(e) => setNuevoEmail(e.target.value)}
+                            placeholder="correo@sindicato.es"
+                            sx={{ mt: 1 }}
+                        />
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2 }}>
+                        <Button onClick={() => setModalAbierto(false)} disabled={guardandoEmail}>Cancelar</Button>
+                        <Button type="submit" variant="contained" disabled={guardandoEmail}>
+                            {guardandoEmail ? 'Guardando...' : 'Guardar Cambios'}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
         </Container>
     );
 }
