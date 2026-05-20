@@ -1,40 +1,34 @@
 // src/components/Layout.jsx
-// -------------------------------------------------------
-// Layout principal con menú lateral filtrado por rol:
-// - Admin: ve todas las secciones (incluido Sectores y Usuarios)
-// - Delegado: NO ve Sectores ni Usuarios
-// -------------------------------------------------------
-
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-    Box, AppBar, Toolbar, IconButton, Typography, Drawer,
+    Box, AppBar, Toolbar, IconButton, Drawer,
     List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-    Divider, Button, Avatar, Stack, Chip,
+    Typography
 } from '@mui/material';
 import {
     Menu as MenuIcon,
-    Dashboard as DashboardIcon,
-    People as PeopleIcon,
-    Assignment as AssignmentIcon,
-    Category as CategoryIcon,
-    Logout as LogoutIcon,
-    AdminPanelSettings as AdminIcon, // <-- NUEVO: Icono para Usuarios
+    HomeOutlined as HomeIcon,
+    AssignmentOutlined as AssignmentIcon,
+    PeopleOutlined as PeopleIcon,
+    GridViewOutlined as CategoryIcon,
+    PersonOutlineOutlined as AdminIcon,
+    SettingsOutlined as SettingsIcon,
+    LogoutOutlined as LogoutIcon,
 } from '@mui/icons-material';
+
 import { useAuth } from '../context/AuthContext';
 import { useNotificacion } from '../context/NotificacionContext';
 import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from './DialogoConfirmacion';
 import Logo from './Logo';
 
-const ANCHO_DRAWER = 240;
+const ANCHO_DRAWER = 260;
 
 export default function Layout() {
-    const { profile, logout } = useAuth();
+    const { logout } = useAuth(); // Quitamos 'profile' si no lo mostramos aquí abajo
     const { info } = useNotificacion();
-
-    // <-- NUEVO: Traemos también el permiso 'puedeGestionarUsuarios'
-    const { esAdmin, puedeAdministrarSectores, puedeGestionarUsuarios } = usePermisos();
+    const { puedeAdministrarSectores, puedeGestionarUsuarios } = usePermisos();
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -43,21 +37,13 @@ export default function Layout() {
     const [confirmarLogout, setConfirmarLogout] = useState(false);
     const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
-    // Construimos el menú dinámicamente según el rol
+    // Mantenemos tu lógica de permisos, pero ajustamos nombres y orden a la imagen
     const opcionesMenu = [
-        { ruta: '/dashboard',   etiqueta: 'Dashboard',   icono: <DashboardIcon /> },
-        { ruta: '/afiliados',   etiqueta: 'Afiliados',   icono: <PeopleIcon /> },
+        { ruta: '/dashboard',   etiqueta: 'Dashboard',   icono: <HomeIcon /> },
         { ruta: '/incidencias', etiqueta: 'Incidencias', icono: <AssignmentIcon /> },
-
-        // Sectores solo lo ven los administradores
-        ...(puedeAdministrarSectores
-            ? [{ ruta: '/sectores', etiqueta: 'Sectores', icono: <CategoryIcon /> }]
-            : []),
-
-        // <-- NUEVO: Usuarios solo lo ven los administradores
-        ...(puedeGestionarUsuarios
-            ? [{ ruta: '/usuarios', etiqueta: 'Usuarios', icono: <AdminIcon /> }]
-            : []),
+        { ruta: '/afiliados',   etiqueta: 'Afiliados',   icono: <PeopleIcon /> },
+        ...(puedeAdministrarSectores ? [{ ruta: '/sectores', etiqueta: 'Sectores', icono: <CategoryIcon /> }] : []),
+        ...(puedeGestionarUsuarios ? [{ ruta: '/usuarios', etiqueta: 'Perfiles', icono: <AdminIcon /> }] : []),
     ];
 
     function handleNavegar(ruta) {
@@ -75,88 +61,127 @@ export default function Layout() {
     }
 
     const contenidoDrawer = (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Box sx={{ p: 2.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0b1121' }}>
+
+            {/* Cabecera del Logo (Ajustada a la imagen) */}
+            <Box sx={{ p: 3, display: 'flex', alignItems: 'center' }}>
                 <Logo size="sm" />
+                {/* Si tu componente Logo no incluye el texto "Gestión de Incidencias",
+                    puedes añadirlo aquí al lado modificando el componente Logo */}
             </Box>
 
-            <Divider />
+            {/* Lista Principal de Navegación */}
+            <List sx={{ flexGrow: 1, px: 2, pt: 0 }}>
+                {opcionesMenu.map((opcion) => {
+                    const isSelected = location.pathname.startsWith(opcion.ruta);
+                    return (
+                        <ListItem key={opcion.ruta} disablePadding sx={{ mb: 0.5 }}>
+                            <ListItemButton
+                                selected={isSelected}
+                                onClick={() => handleNavegar(opcion.ruta)}
+                                sx={{
+                                    borderRadius: '10px',
+                                    color: isSelected ? '#ffffff' : '#94a3b8',
+                                    py: 1.2,
+                                    px: 2.5,
+                                    transition: 'all 0.2s',
 
-            <List sx={{ flexGrow: 1, py: 1 }}>
-                {opcionesMenu.map((opcion) => (
-                    <ListItem key={opcion.ruta} disablePadding>
+                                    '& .MuiListItemIcon-root': {
+                                        color: isSelected ? '#ffffff' : '#94a3b8',
+                                        minWidth: 40,
+                                        transition: 'all 0.2s',
+                                    },
+
+                                    '&:hover': {
+                                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                        color: '#ffffff',
+                                        '& .MuiListItemIcon-root': { color: '#ffffff' }
+                                    },
+
+                                    '&.Mui-selected': {
+                                        bgcolor: '#3b2e7e', // El morado sólido de la imagen
+                                        '&:hover': {
+                                            bgcolor: '#3b2e7e',
+                                        },
+                                    },
+                                }}
+                            >
+                                <ListItemIcon>{opcion.icono}</ListItemIcon>
+                                <ListItemText
+                                    primary={opcion.etiqueta}
+                                    primaryTypographyProps={{
+                                        fontSize: '0.95rem',
+                                        fontWeight: isSelected ? 600 : 500
+                                    }}
+                                />
+                            </ListItemButton>
+                        </ListItem>
+                    );
+                })}
+            </List>
+
+            {/* Footer del Sidebar (Ajustes y Cerrar sesión) */}
+            <Box sx={{ px: 2, pb: 3 }}>
+                <List disablePadding>
+                    <ListItem disablePadding sx={{ mb: 0.5 }}>
                         <ListItemButton
-                            selected={location.pathname.startsWith(opcion.ruta)}
-                            onClick={() => handleNavegar(opcion.ruta)}
                             sx={{
-                                mx: 1, borderRadius: 1.5,
-                                '&.Mui-selected': {
-                                    bgcolor: 'primary.main',
-                                    color: 'white',
-                                    '& .MuiListItemIcon-root': { color: 'white' },
-                                    '&:hover': { bgcolor: 'primary.dark' },
+                                borderRadius: '10px',
+                                color: '#94a3b8',
+                                py: 1.2,
+                                px: 2.5,
+                                '& .MuiListItemIcon-root': { color: '#94a3b8', minWidth: 40 },
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                    color: '#ffffff',
+                                    '& .MuiListItemIcon-root': { color: '#ffffff' }
                                 },
                             }}
                         >
-                            <ListItemIcon sx={{ minWidth: 40 }}>{opcion.icono}</ListItemIcon>
-                            <ListItemText primary={opcion.etiqueta} />
+                            <ListItemIcon><SettingsIcon /></ListItemIcon>
+                            <ListItemText primary="Ajustes" primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }} />
                         </ListItemButton>
                     </ListItem>
-                ))}
-            </List>
 
-            <Divider />
-
-            <Box sx={{ p: 2 }}>
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar sx={{
-                        bgcolor: esAdmin ? 'secondary.main' : 'primary.main',
-                        width: 36, height: 36
-                    }}>
-                        {profile?.nombre?.[0]?.toUpperCase() || '?'}
-                    </Avatar>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                            {profile?.nombre} {profile?.apellidos}
-                        </Typography>
-                        {/* Badge de rol con color distinto según admin/delegado */}
-                        <Chip
-                            label={esAdmin ? 'Administrador' : 'Delegado'}
-                            size="small"
-                            color={esAdmin ? 'secondary' : 'default'}
-                            sx={{ height: 18, fontSize: '0.65rem', mt: 0.3 }}
-                        />
-                    </Box>
-                </Stack>
-                <Button
-                    fullWidth
-                    startIcon={<LogoutIcon />}
-                    onClick={() => setConfirmarLogout(true)}
-                    sx={{ mt: 1.5 }}
-                    color="inherit"
-                    size="small"
-                >
-                    Cerrar sesión
-                </Button>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => setConfirmarLogout(true)}
+                            sx={{
+                                borderRadius: '10px',
+                                color: '#94a3b8',
+                                py: 1.2,
+                                px: 2.5,
+                                '& .MuiListItemIcon-root': { color: '#94a3b8', minWidth: 40 },
+                                '&:hover': {
+                                    bgcolor: 'rgba(239, 68, 68, 0.1)', // Fondo rojo sutil al hacer hover
+                                    color: '#ef4444',
+                                    '& .MuiListItemIcon-root': { color: '#ef4444' }
+                                },
+                            }}
+                        >
+                            <ListItemIcon><LogoutIcon /></ListItemIcon>
+                            <ListItemText primary="Cerrar sesión" primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }} />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
             </Box>
         </Box>
     );
 
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#0f172a'}}>
+            {/* AppBar (Mobile) */}
             <AppBar
                 position="fixed"
-                color="default"
                 elevation={0}
                 sx={{
                     display: { md: 'none' },
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
+                    borderBottom: '1px solid #1e293b',
+                    bgcolor: '#0b1121',
                 }}
             >
                 <Toolbar>
-                    <IconButton edge="start" onClick={() => setDrawerAbierto(true)}>
+                    <IconButton edge="start" onClick={() => setDrawerAbierto(true)} sx={{ color: '#fff' }}>
                         <MenuIcon />
                     </IconButton>
                     <Box sx={{ ml: 1 }}>
@@ -165,6 +190,7 @@ export default function Layout() {
                 </Toolbar>
             </AppBar>
 
+            {/* Sidebar Desktop */}
             <Drawer
                 variant="permanent"
                 sx={{
@@ -172,8 +198,8 @@ export default function Layout() {
                     '& .MuiDrawer-paper': {
                         width: ANCHO_DRAWER,
                         boxSizing: 'border-box',
-                        border: 'none',
-                        boxShadow: '0 0 12px rgba(0,0,0,0.04)',
+                        borderRight: '1px solid #1e293b', // Borde súper sutil casi invisible
+                        bgcolor: '#0b1121', // Fondo oscuro idéntico a la imagen
                     },
                 }}
                 open
@@ -181,6 +207,7 @@ export default function Layout() {
                 {contenidoDrawer}
             </Drawer>
 
+            {/* Sidebar Mobile */}
             <Drawer
                 variant="temporary"
                 open={drawerAbierto}
@@ -188,12 +215,17 @@ export default function Layout() {
                 ModalProps={{ keepMounted: true }}
                 sx={{
                     display: { xs: 'block', md: 'none' },
-                    '& .MuiDrawer-paper': { width: ANCHO_DRAWER, boxSizing: 'border-box' },
+                    '& .MuiDrawer-paper': {
+                        width: ANCHO_DRAWER,
+                        boxSizing: 'border-box',
+                        bgcolor: '#0b1121'
+                    },
                 }}
             >
                 {contenidoDrawer}
             </Drawer>
 
+            {/* Contenido Principal */}
             <Box
                 component="main"
                 sx={{
@@ -202,11 +234,15 @@ export default function Layout() {
                     ml: { md: `${ANCHO_DRAWER}px` },
                     mt: { xs: 7, md: 0 },
                     minHeight: '100vh',
+                    px: { xs: 2, md: 4 },
+                    py: 4,
+                    bgcolor: '#0f172a' // Fondo del Dashboard, un pelo más claro que el sidebar
                 }}
             >
                 <Outlet />
             </Box>
 
+            {/* Modal de Cierre de Sesión */}
             <DialogoConfirmacion
                 abierto={confirmarLogout}
                 titulo="Cerrar sesión"
