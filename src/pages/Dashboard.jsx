@@ -1,392 +1,815 @@
 // src/pages/Dashboard.jsx
+// -------------------------------------------------------
+// Dashboard del Portal Sindical con datos reales de
+// Supabase, tema oscuro tipo herramienta de analytics.
+//
+// Diseño actualizado:
+// - Tarjetas KPI más vistosas con halos de color y
+//   sparkline prominente
+// - Gráficos con mejor proporción y espaciado
+// - Mejor jerarquía visual entre secciones
+// -------------------------------------------------------
+
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Grid, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Chip, InputBase, Avatar, IconButton
+    TableContainer, TableHead, TableRow, Chip, CircularProgress,
 } from '@mui/material';
 import {
     Assignment, LocalFireDepartment, CheckCircle, People, Schedule,
-    ArrowUpward, ArrowDownward, Search, NotificationsNone,
-    Person, Check
+    TrendingUp, TrendingDown,
 } from '@mui/icons-material';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
-    CartesianGrid, XAxis, YAxis, Tooltip
+    CartesianGrid, XAxis, YAxis, Tooltip,
 } from 'recharts';
+import { supabase } from '../lib/supabase';
 
-// -----------------------------------------------------
-// DATOS MOCK (Para que se vea idéntico a la imagen)
-// -----------------------------------------------------
+// =========================================================
+// Paleta institucional adaptada a fondo oscuro
+// =========================================================
 
-const sparklineData = [{v: 10},{v: 15},{v: 8},{v: 25},{v: 18},{v: 30},{v: 20}];
+const COLORES = {
+    primario: '#5b8def',   // azul
+    ambar:    '#f1880d',   // ámbar
+    verde:    '#10b981',
+    rojo:     '#ef4444',
+    amarillo: '#f59e0b',
+    morado:   '#a855f7',
+    cian:     '#06b6d4',
+};
 
-const kpis = [
-    { title: 'Incidencias abiertas', value: '42', trend: '+12%', isUp: true, icon: <Assignment />, color: '#a855f7', sparkline: sparklineData },
-    { title: 'Incidencias urgentes', value: '8', trend: '+33%', isUp: true, icon: <LocalFireDepartment />, color: '#ef4444', sparkline: sparklineData },
-    { title: 'Incidencias resueltas este mes', value: '128', trend: '+18%', isUp: true, icon: <CheckCircle />, color: '#10b981', sparkline: sparklineData },
-    { title: 'Afiliados activos', value: '94', trend: '+7%', isUp: true, icon: <People />, color: '#3b82f6', sparkline: sparklineData },
-    { title: 'Tiempo medio de resolución', value: '2.3 días', trend: '-8%', isUp: false, icon: <Schedule />, color: '#f59e0b', sparkline: sparklineData },
+const PALETA_SECTORES = [
+    '#5b8def', '#f1880d', '#10b981',
+    '#a855f7', '#ef4444', '#06b6d4',
 ];
 
-const incidenciasMes = [
-    { mes: 'Ene', total: 12 }, { mes: 'Feb', total: 19 }, { mes: 'Mar', total: 28 },
-    { mes: 'Abr', total: 38 }, { mes: 'May', total: 30 }, { mes: 'Jun', total: 21 },
-];
-
-const incidenciasSector = [
-    { name: 'Sanidad', value: 45, percent: '36%', color: '#8b5cf6' },
-    { name: 'Educación', value: 22, percent: '18%', color: '#3b82f6' },
-    { name: 'Transporte', value: 15, percent: '12%', color: '#10b981' },
-    { name: 'Administración', value: 9, percent: '7%', color: '#f59e0b' },
-    { name: 'Servicios', value: 18, percent: '15%', color: '#ef4444' },
-    { name: 'Otros', value: 16, percent: '12%', color: '#64748b' },
-];
-
-const estadoIncidencias = [
-    { name: 'Abiertas', value: 35, percent: '20%', color: '#8b5cf6' },
-    { name: 'En proceso', value: 12, percent: '7%', color: '#3b82f6' },
-    { name: 'Cerradas', value: 140, percent: '73%', color: '#10b981' },
-];
-
-const incidenciasRecientes = [
-    { id: '#INC-2024-021', titulo: 'Problema con nómina de abril', afiliado: 'José García', sector: 'Sanidad', prioridad: 'URGENTE', estado: 'ABIERTA', fecha: '12/05/2024' },
-    { id: '#INC-2024-020', titulo: 'Duda sobre convenio colectivo', afiliado: 'María López', sector: 'Educación', prioridad: 'ALTA', estado: 'EN PROCESO', fecha: '11/05/2024' },
-    { id: '#INC-2024-019', titulo: 'Solicitud de documentación', afiliado: 'Carlos Martín', sector: 'Administración', prioridad: 'MEDIA', estado: 'ABIERTA', fecha: '10/05/2024' },
-    { id: '#INC-2024-018', titulo: 'Incidencia con aplicación', afiliado: 'Lucía Fernández', sector: 'Servicios', prioridad: 'MEDIA', estado: 'CERRADA', fecha: '09/05/2024' },
-    { id: '#INC-2024-017', titulo: 'Consulta sobre permisos', afiliado: 'Antonio Ruiz', sector: 'Transporte', prioridad: 'BAJA', estado: 'CERRADA', fecha: '08/05/2024' },
-];
-
-const actividades = [
-    { user: 'Marta Gómez', action: 'creó una nueva incidencia', time: 'Hace 10 min', icon: <Assignment sx={{ fontSize: 16 }}/>, color: '#8b5cf6' },
-    { user: 'Pedro Sánchez', action: 'cambió la prioridad a Urgente', time: 'Hace 25 min', icon: <ArrowUpward sx={{ fontSize: 16 }}/>, color: '#f59e0b' },
-    { user: 'Laura Pérez', action: 'asignó la incidencia a Juan López', time: 'Hace 1 hora', icon: <Person sx={{ fontSize: 16 }}/>, color: '#3b82f6' },
-    { user: 'Ana Martínez', action: 'cerró la incidencia #INC-2024-015', time: 'Hace 2 horas', icon: <Check sx={{ fontSize: 16 }}/>, color: '#10b981' },
-    { user: 'Nuevo archivo adjunto', action: 'en la incidencia #INC-2024-018', time: 'Hace 3 horas', icon: <Assignment sx={{ fontSize: 16 }}/>, color: '#8b5cf6' },
-];
-
-// -----------------------------------------------------
-// COMPONENTE PRINCIPAL
-// -----------------------------------------------------
-
-export default function Dashboard() {
-    return (
-        <Box sx={{ width: '100%', px: { xs: 2, md: 4, lg: 5 }, py: 4 }}>
-
-            {/* HEADER SUPERIOR */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', md: 'row' },
-                    justifyContent: 'space-between',
-                    alignItems: { xs: 'flex-start', md: 'center' },
-                    gap: 3,
-                    mb: 5
-                }}
-            >
-                <Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>
-                        Dashboard
-                    </Typography>
-                    <Typography sx={{ color: '#94a3b8', mt: 0.5, fontSize: '0.9rem' }}>
-                        Resumen general del sistema
-                    </Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: { xs: 2, md: 3 }, width: { xs: '100%', md: 'auto' } }}>
-                    <Paper sx={{ display: 'flex', alignItems: 'center', bgcolor: '#111827', border: '1px solid #1e293b', borderRadius: '8px', px: 2, py: 0.75, width: { xs: '100%', md: 280 }, boxShadow: 'none' }}>
-                        <InputBase placeholder="Buscar..." sx={{ flex: 1, color: '#fff', fontSize: '0.9rem' }} />
-                        <Search sx={{ color: '#64748b', fontSize: 20 }} />
-                    </Paper>
-
-                    <IconButton sx={{ color: '#94a3b8', position: 'relative' }}>
-                        <NotificationsNone />
-                        <Box sx={{ position: 'absolute', top: 4, right: 6, width: 16, height: 16, bgcolor: '#a855f7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0f172a' }}>
-                            <Typography sx={{ fontSize: '9px', color: '#fff', fontWeight: 'bold' }}>3</Typography>
-                        </Box>
-                    </IconButton>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}>
-                        <Avatar sx={{ width: 40, height: 40, bgcolor: '#a855f7', fontSize: '1.1rem', fontWeight: 600 }}>L</Avatar>
-                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                            <Typography sx={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>Laura Pérez</Typography>
-                            <Typography sx={{ color: '#64748b', fontSize: '0.8rem' }}>Administradora</Typography>
-                        </Box>
-                    </Box>
-                </Box>
-            </Box>
-
-            {/* 1. ROW: TARJETAS KPI */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(5, 1fr)' }, gap: 2.5, mb: 4 }}>
-                {kpis.map((kpi, index) => (
-                    <Paper key={index} sx={{ ...cardStyle, position: 'relative', overflow: 'hidden', p: 0, minHeight: 230, display: 'flex', flexDirection: 'column' }}>
-
-                        {/* Contenido de texto */}
-                        <Box sx={{ p: 3.5, position: 'relative', zIndex: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 2.5 }}>
-                                <Box sx={{ bgcolor: kpi.color, color: '#ffffff', width: 54, height: 54, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 10px ${kpi.color}40` }}>
-                                    {kpi.icon}
-                                </Box>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                    <Typography sx={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.2, mb: 0.5 }}>
-                                        {kpi.title}
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff', lineHeight: 1 }}>
-                                        {kpi.value}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 3 }}>
-                                <Typography sx={{ color: '#64748b', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                                    <span style={{ color: kpi.isUp ? (kpi.color === '#ef4444' ? '#ef4444' : '#10b981') : '#f59e0b', display: 'flex', alignItems: 'center', marginRight: '6px', fontWeight: 600 }}>
-                                        {kpi.isUp ? <ArrowUpward sx={{ fontSize: 14 }} /> : <ArrowDownward sx={{ fontSize: 14 }} />}
-                                        {kpi.trend}
-                                    </span>
-                                    desde el mes pasado
-                                </Typography>
-                            </Box>
-                        </Box>
-
-                        {/* Sparkline */}
-                        <Box sx={{ height: 75, width: '100%', position: 'absolute', bottom: 0, left: 0, zIndex: 1 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={kpi.sparkline}>
-                                    <defs>
-                                        <linearGradient id={`gradienteSparkline${index}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={kpi.color} stopOpacity={0.4}/>
-                                            <stop offset="95%" stopColor={kpi.color} stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="v" stroke={kpi.color} strokeWidth={2} fillOpacity={1} fill={`url(#gradienteSparkline${index})`} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </Paper>
-                ))}
-            </Box>
-            {/* 2. MAIN LAYOUT: Izquierda (Gráficos y Tabla) | Derecha (Actividad) */}
-            <Grid container spacing={3}>
-
-                {/* 2. COLUMNA IZQUIERDA - Vuelve a ser de 9 para que la derecha respire */}
-                <Grid item xs={12} lg={9}>
-
-                    {/* FILA DE 3 GRÁFICOS (Iguales, 1/3 cada uno) */}
-                    <Grid container spacing={3} mb={3}>
-
-                        {/* Gráfico 1: Área (Meses) */}
-                        <Grid item xs={12} md={4}>
-                            <Paper sx={{ ...cardStyle, height: 360, display: 'flex', flexDirection: 'column' }}>
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                    <Typography fontWeight={600} sx={{ color: '#ffffff' }}>Incidencias por mes</Typography>
-                                    <Chip label="Este año" size="small" sx={{ bgcolor: '#1e293b', color: '#94a3b8', borderRadius: 1 }} />
-                                </Box>
-                                {/* TRUCO ANTIMONSTRUOS: Posición relativa y absoluta para aislar Recharts */}
-                                <Box sx={{ flexGrow: 1, position: 'relative' }}>
-                                    <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={incidenciasMes} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                                <defs>
-                                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
-                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid stroke="#1e293b" vertical={false} />
-                                                <XAxis dataKey="mes" stroke="#64748b" tickLine={false} axisLine={false} tick={{ fontSize: 12, dy: 10 }} />
-                                                <YAxis stroke="#64748b" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
-                                                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff', borderRadius: 8 }} />
-                                                <Area type="monotone" dataKey="total" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </Box>
-                                </Box>
-                            </Paper>
-                        </Grid>
-
-                        {/* Gráfico 2: Donut (Sectores) */}
-                        <Grid item xs={12} md={4}>
-                            <Paper sx={{ ...cardStyle, height: 360, display: 'flex', flexDirection: 'column' }}>
-                                <Typography fontWeight={600} mb={3} sx={{ color: '#ffffff' }}>Incidencias por sector</Typography>
-                                <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-                                    {/* Quesito */}
-                                    <Box sx={{ width: '50%', height: '100%', position: 'relative' }}>
-                                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie data={incidenciasSector} dataKey="value" innerRadius="60%" outerRadius="90%" paddingAngle={2}>
-                                                        {incidenciasSector.map((entry, index) => <Cell key={index} fill={entry.color} stroke="none" />)}
-                                                    </Pie>
-                                                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff', borderRadius: 8 }} />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </Box>
-                                    </Box>
-                                    {/* Leyenda Derecha */}
-                                    <Box sx={{ width: '50%', pl: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1.5 }}>
-                                        {incidenciasSector.map((s, i) => (
-                                            <Box key={i} display="flex" alignItems="center" justifyContent="space-between">
-                                                <Box display="flex" alignItems="center" gap={1}>
-                                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color, flexShrink: 0 }} />
-                                                    <Typography sx={{ color: '#94a3b8', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</Typography>
-                                                </Box>
-                                                <Box display="flex" gap={0.5} ml={1}>
-                                                    <Typography sx={{ color: '#fff', fontSize: '0.75rem', fontWeight: 600 }}>{s.value}</Typography>
-                                                    <Typography sx={{ color: '#64748b', fontSize: '0.75rem' }}>({s.percent})</Typography>
-                                                </Box>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            </Paper>
-                        </Grid>
-
-                        {/* Gráfico 3: Donut (Estados) */}
-                        <Grid item xs={12} md={4}>
-                            <Paper sx={{ ...cardStyle, height: 360, display: 'flex', flexDirection: 'column' }}>
-                                <Typography fontWeight={600} mb={2} sx={{ color: '#ffffff' }}>Estado de incidencias</Typography>
-                                {/* Quesito (Ocupa la parte superior) */}
-                                <Box sx={{ flexGrow: 1, position: 'relative', mb: 2 }}>
-                                    <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={estadoIncidencias} dataKey="value" innerRadius="60%" outerRadius="90%" paddingAngle={2}>
-                                                    {estadoIncidencias.map((entry, index) => <Cell key={index} fill={entry.color} stroke="none" />)}
-                                                </Pie>
-                                                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff', borderRadius: 8 }} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </Box>
-                                </Box>
-                                {/* Leyenda (Abajo) */}
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {estadoIncidencias.map((s, i) => (
-                                        <Box key={i} display="flex" alignItems="center" justifyContent="space-between">
-                                            <Box display="flex" alignItems="center" gap={1}>
-                                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color, flexShrink: 0 }} />
-                                                <Typography sx={{ color: '#94a3b8', fontSize: '0.75rem' }}>{s.name}</Typography>
-                                            </Box>
-                                            <Box display="flex" gap={1}>
-                                                <Typography sx={{ color: '#fff', fontSize: '0.75rem', fontWeight: 600 }}>{s.value}</Typography>
-                                                <Typography sx={{ color: '#64748b', fontSize: '0.75rem' }}>({s.percent})</Typography>
-                                            </Box>
-                                        </Box>
-                                    ))}
-                                </Box>
-                            </Paper>
-                        </Grid>
-
-                    </Grid>
-
-                    {/* TABLA DE ÚLTIMAS INCIDENCIAS */}
-                    <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
-                        <Box p={2.5} borderBottom="1px solid #1e293b">
-                            <Typography fontWeight={600} sx={{ color: '#ffffff' }}>Últimas incidencias</Typography>
-                        </Box>
-                        <TableContainer sx={{ overflowX: 'auto' }}>
-                            <Table size="small" sx={{ minWidth: 800 }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell sx={tableHeader}>ID</TableCell>
-                                        <TableCell sx={tableHeader}>Título</TableCell>
-                                        <TableCell sx={tableHeader}>Afiliado</TableCell>
-                                        <TableCell sx={tableHeader}>Sector</TableCell>
-                                        <TableCell sx={tableHeader}>Prioridad</TableCell>
-                                        <TableCell sx={tableHeader}>Estado</TableCell>
-                                        <TableCell sx={tableHeader}>Fecha</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {incidenciasRecientes.map((i, index) => (
-                                        <TableRow key={index} sx={{ '& td, & th': { borderBottom: '1px solid #1e293b', py: 2 } }}>
-                                            <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{i.id}</TableCell>
-                                            <TableCell sx={{ color: '#ffffff', fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{i.titulo}</TableCell>
-                                            <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{i.afiliado}</TableCell>
-                                            <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{i.sector}</TableCell>
-                                            <TableCell>
-                                                <Chip label={i.prioridad} size="small" sx={{
-                                                    bgcolor: i.prioridad === 'URGENTE' ? '#ef444420' : i.prioridad === 'ALTA' ? '#f59e0b20' : i.prioridad === 'MEDIA' ? '#eab30820' : '#10b98120',
-                                                    color: i.prioridad === 'URGENTE' ? '#ef4444' : i.prioridad === 'ALTA' ? '#f59e0b' : i.prioridad === 'MEDIA' ? '#eab308' : '#10b981',
-                                                    fontWeight: 700, borderRadius: 1, fontSize: '0.7rem', height: 24
-                                                }} />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Chip label={i.estado} size="small" sx={{
-                                                    bgcolor: i.estado === 'ABIERTA' ? '#a855f720' : i.estado === 'EN PROCESO' ? '#3b82f620' : '#10b98120',
-                                                    color: i.estado === 'ABIERTA' ? '#a855f7' : i.estado === 'EN PROCESO' ? '#3b82f6' : '#10b981',
-                                                    fontWeight: 700, borderRadius: 1, fontSize: '0.7rem', height: 24
-                                                }} />
-                                            </TableCell>
-                                            <TableCell sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{i.fecha}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <Box p={2} textAlign="center" sx={{ bgcolor: 'rgba(17, 24, 39, 0.5)' }}>
-                            <Typography sx={{ color: '#a855f7', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
-                                Ver todas las incidencias
-                            </Typography>
-                        </Box>
-                    </Paper>
-                </Grid>
-
-                {/* 3. COLUMNA DERECHA - Proporción correcta (3 de 12) para que respire */}
-                <Grid item xs={12} lg={3}>
-                    <Paper sx={{ ...cardStyle, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Typography fontWeight={600} mb={4} sx={{ color: '#ffffff' }}>Actividad reciente</Typography>
-
-                        <Box sx={{ flex: 1 }}>
-                            {actividades.map((act, index) => (
-                                <Box key={index} display="flex" gap={2} mb={4} position="relative">
-                                    {/* Línea conectora */}
-                                    {index !== actividades.length - 1 && (
-                                        <Box sx={{ position: 'absolute', left: 16, top: 32, bottom: -32, width: 2, bgcolor: '#1e293b' }} />
-                                    )}
-                                    {/* Icono */}
-                                    <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: `${act.color}15`, color: act.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, border: `1px solid ${act.color}30` }}>
-                                        {act.icon}
-                                    </Box>
-                                    {/* Contenido */}
-                                    <Box>
-                                        <Typography sx={{ color: '#fff', fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.3 }}>
-                                            {act.user} <span style={{ color: '#94a3b8', fontWeight: 400 }}>{act.action}</span>
-                                        </Typography>
-                                        <Typography sx={{ color: '#64748b', fontSize: '0.75rem', mt: 0.5 }}>
-                                            {act.time}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            ))}
-                        </Box>
-
-                        <Box mt={3} pt={3} textAlign="center">
-                            <Box sx={{ display: 'inline-block', border: '1px solid #a855f750', borderRadius: 2, px: 3, py: 1.5, cursor: 'pointer', '&:hover': { bgcolor: '#a855f710' } }}>
-                                <Typography sx={{ color: '#a855f7', fontSize: '0.85rem', fontWeight: 600 }}>
-                                    Ver todas las actividades
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Paper>
-                </Grid>
-
-            </Grid>
-        </Box>
-    );
-}
-
-// -----------------------------------------------------
-// ESTILOS GLOBALES REUTILIZABLES
-// -----------------------------------------------------
+// Estilo base de tarjeta
 const cardStyle = {
-    bgcolor: '#111827',
-    borderRadius: 3,
-    p: 3,
-    border: '1px solid #1e293b',
-    boxShadow: 'none',
+    background:   'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
+    borderRadius: 4,
+    border:       '1px solid rgba(255,255,255,0.06)',
+    boxShadow:    '0 12px 40px rgba(0,0,0,0.35)',
+    overflow:     'hidden',
 };
 
 const tableHeader = {
     color: '#94a3b8',
     fontWeight: 600,
-    fontSize: '0.75rem',
+    fontSize: '0.72rem',
     borderBottom: '1px solid #1e293b',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    py: 2,
 };
+
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+
+// =========================================================
+// COMPONENTE PRINCIPAL
+// =========================================================
+
+export default function Dashboard() {
+    const navigate = useNavigate();
+
+    const [afiliados, setAfiliados]     = useState([]);
+    const [incidencias, setIncidencias] = useState([]);
+    const [cargando, setCargando]       = useState(true);
+
+    useEffect(() => { cargar(); }, []);
+
+    async function cargar() {
+        setCargando(true);
+
+        const [afilRes, incRes] = await Promise.all([
+            supabase
+                .from('afiliados')
+                .select('id, activo, sector:sectores(id, nombre)'),
+            supabase
+                .from('incidencias')
+                .select(`
+          id, titulo, estado, prioridad,
+          fecha_apertura, fecha_cierre, created_at,
+          afiliado:afiliados(
+            id, nombre, apellidos,
+            sector:sectores(id, nombre)
+          )
+        `)
+                .order('created_at', { ascending: false }),
+        ]);
+
+        if (!afilRes.error) setAfiliados(afilRes.data ?? []);
+        if (!incRes.error)  setIncidencias(incRes.data  ?? []);
+
+        setCargando(false);
+    }
+
+    // ====== KPIs y agregaciones ======
+
+    const stats = useMemo(() => {
+        const afiliadosActivos = afiliados.filter(a => a.activo).length;
+        const pendientes = incidencias.filter(i => i.estado === 'pendiente').length;
+        const enProceso  = incidencias.filter(i => i.estado === 'en_proceso').length;
+        const resueltas  = incidencias.filter(i => i.estado === 'resuelta').length;
+        const urgentes   = incidencias.filter(
+            i => i.prioridad === 'alta' && i.estado !== 'resuelta'
+        ).length;
+
+        const cerradas = incidencias.filter(i => i.fecha_cierre);
+        let tiempoMedio = 0;
+        if (cerradas.length > 0) {
+            const sumaMs = cerradas.reduce((acc, i) => {
+                return acc +
+                    (new Date(i.fecha_cierre).getTime() -
+                        new Date(i.fecha_apertura).getTime());
+            }, 0);
+            tiempoMedio = sumaMs / cerradas.length / (1000 * 60 * 60 * 24);
+        }
+
+        return {
+            afiliadosActivos,
+            pendientes, enProceso, resueltas, urgentes,
+            tiempoMedio: tiempoMedio.toFixed(1),
+        };
+    }, [afiliados, incidencias]);
+
+    // ====== Incidencias por mes (últimos 6 meses) ======
+
+    const incidenciasPorMes = useMemo(() => {
+        const hoy = new Date();
+        const datos = [];
+        for (let i = 5; i >= 0; i--) {
+            const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+            const total = incidencias.filter(inc => {
+                const f = new Date(inc.created_at);
+                return f.getMonth() === fecha.getMonth() &&
+                    f.getFullYear() === fecha.getFullYear();
+            }).length;
+            datos.push({ mes: MESES_CORTOS[fecha.getMonth()], total });
+        }
+        return datos;
+    }, [incidencias]);
+
+    // ====== Por sector ======
+
+    const incidenciasPorSector = useMemo(() => {
+        const agrupado = {};
+        incidencias.forEach(i => {
+            const sector = i.afiliado?.sector?.nombre ?? 'Sin sector';
+            agrupado[sector] = (agrupado[sector] ?? 0) + 1;
+        });
+        return Object.entries(agrupado)
+            .map(([nombre, valor], idx) => ({
+                nombre, valor,
+                color: PALETA_SECTORES[idx % PALETA_SECTORES.length],
+            }))
+            .sort((a, b) => b.valor - a.valor);
+    }, [incidencias]);
+
+    // ====== Estado de incidencias ======
+
+    const estadoIncidencias = useMemo(() => ([
+        { nombre: 'Pendientes', valor: stats.pendientes, color: COLORES.amarillo },
+        { nombre: 'En proceso', valor: stats.enProceso,  color: COLORES.primario },
+        { nombre: 'Resueltas',  valor: stats.resueltas,  color: COLORES.verde },
+    ].filter(x => x.valor > 0)), [stats]);
+
+    // ====== Configuración de KPIs ======
+
+    const sparkData = incidenciasPorMes.map(m => ({ v: m.total }));
+
+    const kpis = [
+        {
+            title:    'Incidencias abiertas',
+            value:    stats.pendientes + stats.enProceso,
+            icon:     <Assignment sx={{ fontSize: 26 }} />,
+            color:    COLORES.primario,
+            sparkline: sparkData,
+        },
+        {
+            title:    'Incidencias urgentes',
+            value:    stats.urgentes,
+            icon:     <LocalFireDepartment sx={{ fontSize: 26 }} />,
+            color:    COLORES.rojo,
+            sparkline: sparkData,
+        },
+        {
+            title:    'Incidencias resueltas',
+            value:    stats.resueltas,
+            icon:     <CheckCircle sx={{ fontSize: 26 }} />,
+            color:    COLORES.verde,
+            sparkline: sparkData,
+        },
+        {
+            title:    'Afiliados activos',
+            value:    stats.afiliadosActivos,
+            icon:     <People sx={{ fontSize: 26 }} />,
+            color:    COLORES.morado,
+            sparkline: sparkData,
+        },
+        {
+            title:    'Tiempo medio resolución',
+            value:    stats.tiempoMedio > 0 ? `${stats.tiempoMedio} d` : '—',
+            icon:     <Schedule sx={{ fontSize: 26 }} />,
+            color:    COLORES.ambar,
+            sparkline: sparkData,
+        },
+    ];
+
+    const ultimas = incidencias.slice(0, 5);
+
+    // =========================================================
+    // RENDER
+    // =========================================================
+
+    if (cargando) {
+        return (
+            <Box sx={{
+                minHeight: '100vh',
+                bgcolor: '#080d1c',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <CircularProgress sx={{ color: COLORES.primario }} />
+            </Box>
+        );
+    }
+
+    return (
+        <Box sx={{
+            minHeight: '100vh',
+            bgcolor: '#080d1c',
+            backgroundImage: `
+        radial-gradient(circle at 20% 0%, rgba(91,141,239,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(241,136,13,0.05) 0%, transparent 50%)
+      `,
+            px: { xs: 2, md: 4, lg: 5 },
+            py: 4,
+        }}>
+            {/* === Cabecera === */}
+            <Box mb={5}>
+                <Typography variant="h4" fontWeight={700} sx={{
+                    color: '#ffffff',
+                    letterSpacing: '-0.02em',
+                }}>
+                    Dashboard
+                </Typography>
+                <Typography sx={{
+                    color: '#94a3b8', mt: 0.5,
+                    fontSize: '0.95rem',
+                }}>
+                    Resumen del Portal Sindical en tiempo real
+                </Typography>
+            </Box>
+
+            {/* === Fila 1: tarjetas KPI === */}
+            <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    xl: 'repeat(5, 1fr)',
+                },
+                gap: 3,
+                mb: 5,
+            }}>
+                {kpis.map((kpi, idx) => (
+                    <TarjetaKPI key={idx} kpi={kpi} index={idx} />
+                ))}
+            </Box>
+
+            {/* === Fila 2: tres gráficos en grid CSS para ocupar todo el ancho === */}
+            <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    md: 'repeat(3, 1fr)',
+                },
+                gap: 3,
+                mb: 5,
+            }}>
+                {/* Incidencias por mes */}
+                <Paper sx={{
+                    ...cardStyle, p: 3.5, height: 400,
+                    display: 'flex', flexDirection: 'column',
+                }}>
+                    <Box mb={2}>
+                        <Typography fontWeight={700} sx={{
+                            color: '#fff', fontSize: '1.05rem',
+                        }}>
+                            Incidencias por mes
+                        </Typography>
+                        <Typography sx={{
+                            color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                        }}>
+                            Evolución últimos 6 meses
+                        </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, minHeight: 0 }}>
+                        {incidenciasPorMes.every(m => m.total === 0) ? (
+                            <MensajeVacio texto="Aún no hay incidencias registradas" />
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={incidenciasPorMes}
+                                           margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorMes" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%"  stopColor={COLORES.primario} stopOpacity={0.5} />
+                                            <stop offset="95%" stopColor={COLORES.primario} stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid stroke="#1e293b" vertical={false} />
+                                    <XAxis dataKey="mes" stroke="#64748b" tickLine={false}
+                                           axisLine={false} tick={{ fontSize: 12, dy: 8 }} />
+                                    <YAxis stroke="#64748b" tickLine={false}
+                                           axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
+                                    <Tooltip contentStyle={{
+                                        backgroundColor: '#0f172a',
+                                        border: '1px solid #1e293b',
+                                        borderRadius: 8,
+                                        color: '#fff',
+                                    }} />
+                                    <Area type="monotone" dataKey="total"
+                                          stroke={COLORES.primario} strokeWidth={3}
+                                          fill="url(#colorMes)"
+                                          dot={{ r: 4, fill: COLORES.primario, strokeWidth: 0 }}
+                                          activeDot={{ r: 7, fill: COLORES.primario,
+                                              stroke: '#fff', strokeWidth: 2 }}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </Box>
+                </Paper>
+
+                {/* Incidencias por sector */}
+                <Paper sx={{
+                    ...cardStyle, p: 3.5, height: 400,
+                    display: 'flex', flexDirection: 'column',
+                }}>
+                    <Box mb={2}>
+                        <Typography fontWeight={700} sx={{
+                            color: '#fff', fontSize: '1.05rem',
+                        }}>
+                            Incidencias por sector
+                        </Typography>
+                        <Typography sx={{
+                            color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                        }}>
+                            Distribución actual
+                        </Typography>
+                    </Box>
+                    {incidenciasPorSector.length === 0 ? (
+                        <MensajeVacio texto="No hay datos por sector" />
+                    ) : (
+                        <>
+                            <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={incidenciasPorSector}
+                                             dataKey="valor"
+                                             innerRadius={55}
+                                             outerRadius={82}
+                                             paddingAngle={3}>
+                                            {incidenciasPorSector.map((s, idx) => (
+                                                <Cell key={idx} fill={s.color} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{
+                                            backgroundColor: '#0f172a',
+                                            border: '1px solid #1e293b',
+                                            borderRadius: 8,
+                                            color: '#fff',
+                                        }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                {/* Total en el centro */}
+                                <Box sx={{
+                                    position: 'absolute', top: '50%', left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    textAlign: 'center', pointerEvents: 'none',
+                                }}>
+                                    <Typography sx={{
+                                        color: '#fff', fontWeight: 700,
+                                        fontSize: '1.8rem', lineHeight: 1,
+                                    }}>
+                                        {incidenciasPorSector.reduce((a, c) => a + c.valor, 0)}
+                                    </Typography>
+                                    <Typography sx={{
+                                        color: '#64748b', fontSize: '0.7rem', mt: 0.3,
+                                    }}>
+                                        Total
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Box sx={{
+                                mt: 1.5,
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: 1,
+                            }}>
+                                {incidenciasPorSector.map((s, idx) => {
+                                    const total = incidenciasPorSector
+                                        .reduce((acc, c) => acc + c.valor, 0);
+                                    const pct = ((s.valor / total) * 100).toFixed(0);
+                                    return (
+                                        <Box key={idx} sx={{
+                                            display: 'flex', alignItems: 'center', gap: 1,
+                                        }}>
+                                            <Box sx={{
+                                                width: 8, height: 8, borderRadius: '50%',
+                                                bgcolor: s.color, flexShrink: 0,
+                                                boxShadow: `0 0 8px ${s.color}80`,
+                                            }} />
+                                            <Typography sx={{
+                                                color: '#cbd5e1', fontSize: '0.72rem', flex: 1,
+                                                overflow: 'hidden', textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {s.nombre}
+                                            </Typography>
+                                            <Typography sx={{
+                                                color: '#fff', fontSize: '0.72rem',
+                                                fontWeight: 600,
+                                            }}>
+                                                {s.valor}{' '}
+                                                <span style={{ color: '#64748b' }}>({pct}%)</span>
+                                            </Typography>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+                        </>
+                    )}
+                </Paper>
+
+                {/* Estado de incidencias */}
+                <Paper sx={{
+                    ...cardStyle, p: 3.5, height: 400,
+                    display: 'flex', flexDirection: 'column',
+                }}>
+                    <Box mb={2}>
+                        <Typography fontWeight={700} sx={{
+                            color: '#fff', fontSize: '1.05rem',
+                        }}>
+                            Estado de incidencias
+                        </Typography>
+                        <Typography sx={{
+                            color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                        }}>
+                            Pendientes, en curso y cerradas
+                        </Typography>
+                    </Box>
+                    {estadoIncidencias.length === 0 ? (
+                        <MensajeVacio texto="No hay incidencias" />
+                    ) : (
+                        <>
+                            <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={estadoIncidencias}
+                                             dataKey="valor"
+                                             innerRadius={55}
+                                             outerRadius={82}
+                                             paddingAngle={3}>
+                                            {estadoIncidencias.map((s, idx) => (
+                                                <Cell key={idx} fill={s.color} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{
+                                            backgroundColor: '#0f172a',
+                                            border: '1px solid #1e293b',
+                                            borderRadius: 8,
+                                            color: '#fff',
+                                        }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                {/* Total en el centro */}
+                                <Box sx={{
+                                    position: 'absolute', top: '50%', left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    textAlign: 'center', pointerEvents: 'none',
+                                }}>
+                                    <Typography sx={{
+                                        color: '#fff', fontWeight: 700,
+                                        fontSize: '1.8rem', lineHeight: 1,
+                                    }}>
+                                        {estadoIncidencias.reduce((a, c) => a + c.valor, 0)}
+                                    </Typography>
+                                    <Typography sx={{
+                                        color: '#64748b', fontSize: '0.7rem', mt: 0.3,
+                                    }}>
+                                        Total
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Box sx={{ mt: 1.5 }}>
+                                {estadoIncidencias.map((s, idx) => {
+                                    const total = estadoIncidencias
+                                        .reduce((acc, c) => acc + c.valor, 0);
+                                    const pct = ((s.valor / total) * 100).toFixed(0);
+                                    return (
+                                        <Box key={idx} sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            mb: 0.8,
+                                        }}>
+                                            <Box sx={{
+                                                display: 'flex', alignItems: 'center', gap: 1,
+                                            }}>
+                                                <Box sx={{
+                                                    width: 8, height: 8, borderRadius: '50%',
+                                                    bgcolor: s.color,
+                                                    boxShadow: `0 0 8px ${s.color}80`,
+                                                }} />
+                                                <Typography sx={{
+                                                    color: '#cbd5e1', fontSize: '0.78rem',
+                                                }}>
+                                                    {s.nombre}
+                                                </Typography>
+                                            </Box>
+                                            <Typography sx={{
+                                                color: '#fff', fontSize: '0.78rem',
+                                                fontWeight: 600,
+                                            }}>
+                                                {s.valor}{' '}
+                                                <span style={{ color: '#64748b' }}>({pct}%)</span>
+                                            </Typography>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+                        </>
+                    )}
+                </Paper>
+            </Box>
+
+            {/* Espacio extra entre los gráficos y la tabla */}
+            <Box sx={{ height: { xs: 16, md: 32 } }} />
+
+            {/* === Fila 3: tabla de últimas incidencias === */}
+            <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
+                <Box sx={{
+                    px: 3.5, py: 2.5,
+                    borderBottom: '1px solid #1e293b',
+                }}>
+                    <Typography fontWeight={700} sx={{
+                        color: '#fff', fontSize: '1.05rem',
+                    }}>
+                        Últimas incidencias
+                    </Typography>
+                    <Typography sx={{
+                        color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                    }}>
+                        Las {ultimas.length} más recientes
+                    </Typography>
+                </Box>
+
+                {ultimas.length === 0 ? (
+                    <Box sx={{ p: 6, textAlign: 'center' }}>
+                        <Typography sx={{ color: '#64748b' }}>
+                            Todavía no hay incidencias registradas.
+                        </Typography>
+                    </Box>
+                ) : (
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                        <Table size="small" sx={{ minWidth: 800 }}>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={{ ...tableHeader, pl: 3.5 }}>ID</TableCell>
+                                    <TableCell sx={tableHeader}>Título</TableCell>
+                                    <TableCell sx={tableHeader}>Afiliado</TableCell>
+                                    <TableCell sx={tableHeader}>Sector</TableCell>
+                                    <TableCell sx={tableHeader}>Prioridad</TableCell>
+                                    <TableCell sx={tableHeader}>Estado</TableCell>
+                                    <TableCell sx={{ ...tableHeader, pr: 3.5 }}>Fecha</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {ultimas.map((i) => (
+                                    <TableRow
+                                        key={i.id}
+                                        onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '& td': {
+                                                borderBottom: '1px solid #1e293b',
+                                                py: 2,
+                                            },
+                                            '&:hover': { bgcolor: 'rgba(91,141,239,0.06)' },
+                                            '&:last-child td': { borderBottom: 0 },
+                                        }}
+                                    >
+                                        <TableCell sx={{
+                                            color: '#94a3b8', fontSize: '0.8rem',
+                                            fontFamily: 'monospace', pl: 3.5,
+                                        }}>
+                                            #INC-{String(i.id).padStart(4, '0')}
+                                        </TableCell>
+                                        <TableCell sx={{
+                                            color: '#fff', fontSize: '0.85rem',
+                                            fontWeight: 500, whiteSpace: 'nowrap',
+                                            maxWidth: 240, overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                        }}>
+                                            {i.titulo}
+                                        </TableCell>
+                                        <TableCell sx={{
+                                            color: '#cbd5e1', fontSize: '0.8rem',
+                                            whiteSpace: 'nowrap',
+                                        }}>
+                                            {i.afiliado
+                                                ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}`
+                                                : '—'}
+                                        </TableCell>
+                                        <TableCell sx={{
+                                            color: '#94a3b8', fontSize: '0.8rem',
+                                        }}>
+                                            {i.afiliado?.sector?.nombre ?? '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <ChipPrioridad prioridad={i.prioridad} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <ChipEstado estado={i.estado} />
+                                        </TableCell>
+                                        <TableCell sx={{
+                                            color: '#94a3b8', fontSize: '0.8rem',
+                                            whiteSpace: 'nowrap', pr: 3.5,
+                                        }}>
+                                            {new Date(i.created_at).toLocaleDateString('es-ES')}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+            </Paper>
+        </Box>
+    );
+}
+
+
+// =========================================================
+// Componente de Tarjeta KPI — rediseñado
+// =========================================================
+
+function TarjetaKPI({ kpi, index }) {
+    return (
+        <Paper sx={{
+            ...cardStyle,
+            position: 'relative',
+            overflow: 'hidden',
+            minHeight: 260,
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'transform 0.2s ease-out, box-shadow 0.2s ease-out',
+            '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: `0 20px 50px ${kpi.color}20`,
+            },
+        }}>
+            {/* Halo de color en la esquina superior */}
+            <Box sx={{
+                position: 'absolute',
+                top: -50, right: -50,
+                width: 150, height: 150,
+                borderRadius: '50%',
+                bgcolor: kpi.color,
+                opacity: 0.12,
+                filter: 'blur(40px)',
+            }} />
+
+            {/* Contenido principal */}
+            <Box sx={{
+                p: 3.5,
+                position: 'relative',
+                zIndex: 2,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+            }}>
+                {/* Icono con halo */}
+                <Box sx={{
+                    width: 56, height: 56,
+                    borderRadius: '14px',
+                    background: `linear-gradient(135deg, ${kpi.color} 0%, ${kpi.color}cc 100%)`,
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 8px 20px ${kpi.color}50`,
+                    mb: 3,
+                }}>
+                    {kpi.icon}
+                </Box>
+
+                {/* Título y valor */}
+                <Typography sx={{
+                    color: '#94a3b8',
+                    fontSize: '0.82rem',
+                    fontWeight: 500,
+                    mb: 0.8,
+                    letterSpacing: '0.01em',
+                }}>
+                    {kpi.title}
+                </Typography>
+                <Typography sx={{
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '2.2rem',
+                    lineHeight: 1,
+                    letterSpacing: '-0.02em',
+                }}>
+                    {kpi.value}
+                </Typography>
+            </Box>
+
+            {/* Sparkline en la parte inferior */}
+            <Box sx={{
+                height: 80,
+                width: '100%',
+                position: 'absolute',
+                bottom: 0, left: 0,
+                zIndex: 1,
+                opacity: 0.85,
+            }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={kpi.sparkline}>
+                        <defs>
+                            <linearGradient id={`spark${index}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%"  stopColor={kpi.color} stopOpacity={0.5} />
+                                <stop offset="95%" stopColor={kpi.color} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <Area
+                            type="monotone"
+                            dataKey="v"
+                            stroke={kpi.color}
+                            strokeWidth={2.5}
+                            fill={`url(#spark${index})`}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </Box>
+        </Paper>
+    );
+}
+
+
+// =========================================================
+// Otros componentes auxiliares
+// =========================================================
+
+function ChipPrioridad({ prioridad }) {
+    const config = {
+        alta:  { label: 'ALTA',  bg: '#ef444425', color: '#ef4444' },
+        media: { label: 'MEDIA', bg: '#eab30825', color: '#eab308' },
+        baja:  { label: 'BAJA',  bg: '#10b98125', color: '#10b981' },
+    }[prioridad] ?? { label: prioridad, bg: '#64748b25', color: '#94a3b8' };
+
+    return (
+        <Chip label={config.label} size="small" sx={{
+            bgcolor: config.bg, color: config.color,
+            fontWeight: 700, borderRadius: 1.2,
+            fontSize: '0.68rem', height: 22, px: 0.5,
+        }} />
+    );
+}
+
+function ChipEstado({ estado }) {
+    const config = {
+        pendiente:  { label: 'PENDIENTE',  bg: '#f59e0b25', color: '#f59e0b' },
+        en_proceso: { label: 'EN PROCESO', bg: '#5b8def25', color: '#5b8def' },
+        resuelta:   { label: 'RESUELTA',   bg: '#10b98125', color: '#10b981' },
+    }[estado] ?? { label: estado, bg: '#64748b25', color: '#94a3b8' };
+
+    return (
+        <Chip label={config.label} size="small" sx={{
+            bgcolor: config.bg, color: config.color,
+            fontWeight: 700, borderRadius: 1.2,
+            fontSize: '0.68rem', height: 22, px: 0.5,
+        }} />
+    );
+}
+
+function MensajeVacio({ texto }) {
+    return (
+        <Box sx={{
+            flex: 1, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+        }}>
+            <Typography sx={{
+                color: '#64748b', fontSize: '0.85rem',
+                textAlign: 'center',
+            }}>
+                {texto}
+            </Typography>
+        </Box>
+    );
+}
