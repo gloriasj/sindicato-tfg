@@ -1,7 +1,6 @@
 // src/pages/Incidencias.jsx
 // -------------------------------------------------------
-// Listado de incidencias. Crear/editar y cambiar estado lo
-// pueden hacer ambos roles, pero ELIMINAR solo el admin.
+// Listado de incidencias de la aplicación.
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -9,54 +8,65 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, TextField, MenuItem,
   Stack, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Chip, Tooltip, InputAdornment,
-  CircularProgress, Alert, TablePagination, Select,
-  Link as MuiLink,
+  TableHead, TableRow, IconButton, Chip, Tooltip,
+  CircularProgress, Alert, TablePagination, Link as MuiLink,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   AssignmentLate as AssignmentLateIcon,
-  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
-import { exportarPDF } from '../lib/exportarPDF';
-import { useNotificacion } from '../context/NotificacionContext';
-import { usePermisos } from '../lib/usePermisos';
-import DialogoConfirmacion from '../components/DialogoConfirmacion';
+
+// Estilos globales de la vista
+const cardStyle = {
+  background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
+  borderRadius: 4,
+  border: '1px solid rgba(255,255,255,0.06)',
+  boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+};
+
+const inputStyle = {
+  '& .MuiInputLabel-root': { color: '#94a3b8' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+  '& .MuiOutlinedInput-root': {
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    '& fieldset': { borderColor: '#1e293b' },
+    '&:hover fieldset': { borderColor: '#475569' },
+    '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
+  },
+  '& .MuiSelect-select': { color: '#fff' },
+  '& .MuiSvgIcon-root': { color: '#94a3b8' },
+};
+
+const tableHeadStyle = { color: '#94a3b8', borderBottom: '1px solid #1e293b', fontWeight: 600, bgcolor: 'rgba(0,0,0,0.2)' };
+const tableCellStyle = { color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)' };
 
 const ESTADOS = {
-  pendiente:  { label: 'Pendiente',  color: 'warning' },
-  en_proceso: { label: 'En proceso', color: 'info' },
-  resuelta:   { label: 'Resuelta',   color: 'success' },
+  pendiente:  { label: 'Pendiente',  color: '#f59e0b', bgcolor: 'rgba(245, 158, 11, 0.1)' },
+  en_proceso: { label: 'En proceso', color: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.1)' },
+  resuelta:   { label: 'Resuelta',   color: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.1)' },
 };
 
 const PRIORIDADES = {
-  baja:  { label: 'Baja',  color: 'default' },
-  media: { label: 'Media', color: 'primary' },
-  alta:  { label: 'Alta',  color: 'error' },
+  baja:  { label: 'Baja',  color: '#94a3b8', bgcolor: 'rgba(148, 163, 184, 0.1)' },
+  media: { label: 'Media', color: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.1)' },
+  alta:  { label: 'Alta',  color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.1)' },
 };
 
 export default function Incidencias() {
   const navigate = useNavigate();
-  const { exito, error: notificarError } = useNotificacion();
-  const { puedeEliminarIncidencias } = usePermisos();
 
-  const [incidencias, setIncidencias] = useState([]);
-  const [sectores, setSectores]       = useState([]);
-  const [busqueda, setBusqueda]       = useState('');
-  const [filtroEstado, setFiltroEstado]       = useState('todos');
+  const [incidencias, setIncidencias]       = useState([]);
+  const [busqueda, setBusqueda]             = useState('');
+  const [filtroEstado, setFiltroEstado]     = useState('todos');
   const [filtroPrioridad, setFiltroPrioridad] = useState('todos');
-  const [filtroSector, setFiltroSector]       = useState('todos');
-  const [pagina, setPagina]                   = useState(0);
-  const [filasPorPagina, setFilasPorPagina]   = useState(10);
-  const [cargando, setCargando]   = useState(true);
-  const [error, setError]         = useState(null);
-
-  const [aBorrar, setABorrar]   = useState(null);
-  const [borrando, setBorrando] = useState(false);
+  const [pagina, setPagina]                 = useState(0);
+  const [filasPorPagina, setFilasPorPagina] = useState(10);
+  const [cargando, setCargando]             = useState(true);
+  const [error, setError]                   = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -64,348 +74,240 @@ export default function Incidencias() {
     setCargando(true);
     setError(null);
 
-    const [incRes, sectRes] = await Promise.all([
-      supabase
+    const { data, error: errInc } = await supabase
         .from('incidencias')
-        .select(`
-          *,
-          afiliado:afiliados(
-            id, nombre, apellidos, dni,
-            sector:sectores(id, nombre)
-          )
-        `)
-        .order('created_at', { ascending: false }),
-      supabase.from('sectores').select('*').order('nombre'),
-    ]);
+        .select('*, afiliado:afiliados(nombre, apellidos)')
+        .order('created_at', { ascending: false });
 
-    if (incRes.error) {
-      setError(incRes.error.message);
+    if (errInc) {
+      setError(errInc.message);
     } else {
-      setIncidencias(incRes.data ?? []);
+      setIncidencias(data ?? []);
     }
-    if (!sectRes.error) setSectores(sectRes.data ?? []);
-
     setCargando(false);
   }
 
-  const filtradas = useMemo(() => {
+  const incidenciasFiltradas = useMemo(() => {
     return incidencias.filter((i) => {
       if (busqueda) {
         const t = busqueda.toLowerCase();
+        const nombreCompletoAfiliado = i.afiliado
+            ? `${i.afiliado.nombre} ${i.afiliado.apellidos}`.toLowerCase()
+            : '';
+
         const coincide =
-          i.titulo.toLowerCase().includes(t) ||
-          i.descripcion.toLowerCase().includes(t) ||
-          (i.afiliado?.nombre + ' ' + i.afiliado?.apellidos).toLowerCase().includes(t) ||
-          (i.afiliado?.dni?.toLowerCase().includes(t) ?? false);
+            i.titulo.toLowerCase().includes(t) ||
+            nombreCompletoAfiliado.includes(t);
         if (!coincide) return false;
       }
-      if (filtroEstado    !== 'todos' && i.estado    !== filtroEstado)    return false;
+      if (filtroEstado !== 'todos' && i.estado !== filtroEstado) return false;
       if (filtroPrioridad !== 'todos' && i.prioridad !== filtroPrioridad) return false;
-      if (filtroSector !== 'todos' &&
-          i.afiliado?.sector?.id !== Number(filtroSector)) return false;
       return true;
     });
-  }, [incidencias, busqueda, filtroEstado, filtroPrioridad, filtroSector]);
+  }, [incidencias, busqueda, filtroEstado, filtroPrioridad]);
 
-  const enPagina = filtradas.slice(
-    pagina * filasPorPagina,
-    pagina * filasPorPagina + filasPorPagina,
+  const enPagina = incidenciasFiltradas.slice(
+      pagina * filasPorPagina,
+      pagina * filasPorPagina + filasPorPagina,
   );
 
-  async function cambiarEstado(incidencia, nuevoEstado) {
-    const datos = {
-      estado: nuevoEstado,
-      fecha_cierre: nuevoEstado === 'resuelta' ? new Date().toISOString() : null,
-    };
-    const { error } = await supabase
-      .from('incidencias')
-      .update(datos)
-      .eq('id', incidencia.id);
-
-    if (error) {
-      notificarError('No se pudo actualizar el estado: ' + error.message);
-    } else {
-      setIncidencias((prev) =>
-        prev.map((i) => (i.id === incidencia.id ? { ...i, ...datos } : i)),
-      );
-      exito(`Estado actualizado a "${ESTADOS[nuevoEstado].label}"`);
-    }
-  }
-
-  async function confirmarBorrado() {
-    if (!aBorrar) return;
-    setBorrando(true);
-    const { error } = await supabase
-      .from('incidencias')
-      .delete()
-      .eq('id', aBorrar.id);
-
-    setBorrando(false);
-    setABorrar(null);
-
-    if (error) {
-      notificarError('No se pudo eliminar: ' + error.message);
-    } else {
-      setIncidencias((prev) => prev.filter((i) => i.id !== aBorrar.id));
-      exito('Incidencia eliminada correctamente');
-    }
-  }
-
-  function handleExportarPDF() {
-    try {
-      const fecha = new Date().toISOString().slice(0, 10);
-      const pendientes = filtradas.filter((i) => i.estado === 'pendiente').length;
-
-      exportarPDF({
-        titulo: 'Listado de incidencias',
-        subtitulo: `${filtradas.length} incidencia(s) · ${pendientes} pendientes`,
-        filas: filtradas,
-        columnas: [
-          { clave: 'titulo',                etiqueta: 'Título',    ancho: 50 },
-          { clave: 'afiliado',              etiqueta: 'Afiliado',
-            formato: (a) => a ? `${a.apellidos}, ${a.nombre}` : '',
-            ancho: 45 },
-          { clave: 'afiliado.sector.nombre', etiqueta: 'Sector',   ancho: 25 },
-          { clave: 'estado',                etiqueta: 'Estado',
-            formato: (v) => ESTADOS[v]?.label ?? v, ancho: 25 },
-          { clave: 'prioridad',             etiqueta: 'Prioridad',
-            formato: (v) => PRIORIDADES[v]?.label ?? v, ancho: 22 },
-          { clave: 'fecha_apertura',        etiqueta: 'Apertura',
-            formato: (v) => v ? new Date(v).toLocaleDateString('es-ES') : '',
-            ancho: 25 },
-          { clave: 'fecha_cierre',          etiqueta: 'Cierre',
-            formato: (v) => v ? new Date(v).toLocaleDateString('es-ES') : '—',
-            ancho: 25 },
-        ],
-        nombreArchivo: `incidencias-${fecha}.pdf`,
-      });
-
-      exito('PDF generado correctamente');
-    } catch (e) {
-      notificarError('Error generando el PDF: ' + e.message);
-    }
-  }
-
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
-        spacing={2}
-        mb={3}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={600}>Incidencias</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {filtradas.length} resultado(s) ·{' '}
-            {incidencias.filter((i) => i.estado === 'pendiente').length} pendientes
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Tooltip title="Descargar listado en PDF">
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdfIcon />}
-              onClick={handleExportarPDF}
-              disabled={filtradas.length === 0}
+      <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
+        <Container maxWidth="xl">
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+            <Box>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Incidencias</Typography>
+              <Typography sx={{ color: '#94a3b8', mt: 0.5 }}>Gestión de incidencias y consultas</Typography>
+            </Box>
+            <Stack direction="row" spacing={2}>
+              <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/incidencias/nuevo')}
+              >
+                Nueva Incidencia
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* FILTROS Y BARRA DE BÚSQUEDA */}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 5 }} alignItems="stretch">
+            {/* BARRA DE BUSCAR: Corregida para que el texto sea blanco */}
+            <Paper sx={{ ...cardStyle, borderRadius: '50px', p: 1, display: 'flex', alignItems: 'center', px: 2, flex: 1 }}>
+              <SearchIcon sx={{ color: '#64748b', ml: 1, mr: 1 }} />
+              <TextField
+                  fullWidth
+                  placeholder="Buscar por título o nombre del afiliado..."
+                  variant="standard"
+                  value={busqueda}
+                  onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
+                  // inputProps (con 'i' minúscula) afecta al elemento HTML <input> directamente
+                  inputProps={{
+                    style: {
+                      color: '#ffffff',
+                      WebkitTextFillColor: '#ffffff', // Fuerza el color en navegadores Webkit (Chrome/Safari)
+                    }
+                  }}
+                  // sx afecta al contenedor del componente
+                  sx={{
+                    '& .MuiInput-root': {
+                      color: '#ffffff',
+                    },
+                    '& .MuiInput-input': {
+                      color: '#ffffff !important',
+                      WebkitTextFillColor: '#ffffff !important',
+                      caretColor: '#ffffff' // Esto asegura que el cursor sea blanco
+                    },
+                    '& .MuiInput-input::placeholder': {
+                      color: '#94a3b8 !important',
+                      opacity: 1
+                    }
+                  }}
+              />
+            </Paper>
+
+            <TextField select size="small" label="Estado"
+                       value={filtroEstado}
+                       onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
+                       sx={{ minWidth: 160, ...inputStyle, justifyContent: 'center' }}
             >
-              Exportar PDF
-            </Button>
-          </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/incidencias/nuevo')}
-            size="large"
-          >
-            Nueva incidencia
-          </Button>
-        </Stack>
-      </Stack>
+              <MenuItem value="todos">Todos los estados</MenuItem>
+              <MenuItem value="pendiente">Pendientes</MenuItem>
+              <MenuItem value="en_proceso">En proceso</MenuItem>
+              <MenuItem value="resuelta">Resueltas</MenuItem>
+            </TextField>
 
-      <Paper elevation={0} sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider' }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-          <TextField
-            placeholder="Buscar por título, descripción o afiliado..."
-            value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
-            size="small"
-            sx={{ flex: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField select size="small" label="Estado"
-            value={filtroEstado}
-            onChange={(e) => { setFiltroEstado(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 140 }}>
-            <MenuItem value="todos">Todos</MenuItem>
-            <MenuItem value="pendiente">Pendiente</MenuItem>
-            <MenuItem value="en_proceso">En proceso</MenuItem>
-            <MenuItem value="resuelta">Resuelta</MenuItem>
-          </TextField>
-          <TextField select size="small" label="Prioridad"
-            value={filtroPrioridad}
-            onChange={(e) => { setFiltroPrioridad(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 140 }}>
-            <MenuItem value="todos">Todas</MenuItem>
-            <MenuItem value="baja">Baja</MenuItem>
-            <MenuItem value="media">Media</MenuItem>
-            <MenuItem value="alta">Alta</MenuItem>
-          </TextField>
-          <TextField select size="small" label="Sector"
-            value={filtroSector}
-            onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}
-            sx={{ minWidth: 160 }}>
-            <MenuItem value="todos">Todos</MenuItem>
-            {sectores.map((s) => (
-              <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
-            ))}
-          </TextField>
-        </Stack>
-      </Paper>
+            <TextField select size="small" label="Prioridad"
+                       value={filtroPrioridad}
+                       onChange={(e) => { setFiltroPrioridad(e.target.value); setPagina(0); }}
+                       sx={{ minWidth: 160, ...inputStyle, justifyContent: 'center' }}
+            >
+              <MenuItem value="todos">Todas las prioridades</MenuItem>
+              <MenuItem value="baja">Baja</MenuItem>
+              <MenuItem value="media">Media</MenuItem>
+              <MenuItem value="alta">Alta</MenuItem>
+            </TextField>
+          </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
 
-      <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-        {cargando ? (
-          <Box sx={{ p: 6, textAlign: 'center' }}>
-            <CircularProgress />
-          </Box>
-        ) : filtradas.length === 0 ? (
-          <Box sx={{ p: 6, textAlign: 'center' }}>
-            <AssignmentLateIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-            <Typography color="text.secondary" mt={1}>
-              No hay incidencias que coincidan con los filtros.
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>Título</strong></TableCell>
-                    <TableCell><strong>Afiliado</strong></TableCell>
-                    <TableCell><strong>Sector</strong></TableCell>
-                    <TableCell><strong>Estado</strong></TableCell>
-                    <TableCell><strong>Prioridad</strong></TableCell>
-                    <TableCell><strong>Apertura</strong></TableCell>
-                    <TableCell align="right"><strong>Acciones</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {enPagina.map((i) => (
-                    <TableRow key={i.id} hover>
-                      <TableCell>
-                        <MuiLink
-                          component="button"
-                          underline="hover"
-                          onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
-                          sx={{ textAlign: 'left', color: 'primary.main', fontWeight: 500 }}
-                        >
-                          {i.titulo}
-                        </MuiLink>
-                      </TableCell>
-                      <TableCell>
-                        {i.afiliado ? (
-                          <MuiLink
-                            component="button"
-                            underline="hover"
-                            onClick={() => navigate(`/afiliados/${i.afiliado.id}/detalle`)}
-                            sx={{ textAlign: 'left' }}
-                          >
-                            {i.afiliado.apellidos}, {i.afiliado.nombre}
-                          </MuiLink>
-                        ) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={i.afiliado?.sector?.nombre ?? '—'}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={i.estado}
-                          onChange={(e) => cambiarEstado(i, e.target.value)}
-                          size="small"
-                          sx={{ minWidth: 130, '& .MuiSelect-select': { py: 0.5 } }}
-                        >
-                          {Object.entries(ESTADOS).map(([k, v]) => (
-                            <MenuItem key={k} value={k}>{v.label}</MenuItem>
+          <Box sx={{ mt: 5 }}>
+            <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
+              {cargando ? (
+                  <Box sx={{ p: 6, textAlign: 'center' }}>
+                    <CircularProgress />
+                  </Box>
+              ) : incidenciasFiltradas.length === 0 ? (
+                  <Box sx={{ p: 10, textAlign: 'center' }}>
+                    <AssignmentLateIcon sx={{ fontSize: 60, color: '#475569', mb: 2 }} />
+                    <Typography sx={{ color: '#94a3b8', fontSize: '1.1rem' }}>
+                      No hay incidencias que coincidan con la consulta.
+                    </Typography>
+                  </Box>
+              ) : (
+                  <>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={tableHeadStyle}>Título</TableCell>
+                            <TableCell sx={tableHeadStyle}>Afiliado</TableCell>
+                            <TableCell sx={tableHeadStyle}>Estado</TableCell>
+                            <TableCell sx={tableHeadStyle}>Prioridad</TableCell>
+                            <TableCell sx={tableHeadStyle}>Apertura</TableCell>
+                            <TableCell align="right" sx={tableHeadStyle}>Acciones</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {enPagina.map((i) => (
+                              <TableRow
+                                  key={i.id}
+                                  sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' }, transition: 'background-color 0.2s' }}
+                              >
+                                <TableCell sx={tableCellStyle}>
+                                  <MuiLink
+                                      component="button"
+                                      underline="none"
+                                      // EL TÍTULO VA A DETALLE
+                                      onClick={() => navigate(`/incidencias/${i.id}`)}
+                                      sx={{
+                                        textAlign: 'left',
+                                        color: '#fff',
+                                        fontWeight: 600,
+                                        transition: 'color 0.2s',
+                                        '&:hover': { color: '#3b82f6' }
+                                      }}
+                                  >
+                                    {i.titulo}
+                                  </MuiLink>
+                                </TableCell>
+
+                                <TableCell sx={{ ...tableCellStyle, color: '#94a3b8' }}>
+                                  {i.afiliado ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}` : '—'}
+                                </TableCell>
+
+                                <TableCell sx={tableCellStyle}>
+                                  <Chip
+                                      label={ESTADOS[i.estado].label}
+                                      size="small"
+                                      sx={{ color: ESTADOS[i.estado].color, bgcolor: ESTADOS[i.estado].bgcolor, border: `1px solid ${ESTADOS[i.estado].bgcolor}` }}
+                                  />
+                                </TableCell>
+
+                                <TableCell sx={tableCellStyle}>
+                                  <Chip
+                                      label={PRIORIDADES[i.prioridad].label}
+                                      size="small"
+                                      sx={{ color: PRIORIDADES[i.prioridad].color, bgcolor: PRIORIDADES[i.prioridad].bgcolor, border: `1px solid ${PRIORIDADES[i.prioridad].bgcolor}` }}
+                                  />
+                                </TableCell>
+
+                                <TableCell sx={{ ...tableCellStyle, color: '#94a3b8' }}>
+                                  {new Date(i.fecha_apertura).toLocaleDateString('es-ES')}
+                                </TableCell>
+
+                                <TableCell align="right" sx={tableCellStyle}>
+                                  <Tooltip title="Editar">
+                                    <IconButton
+                                        size="small"
+                                        // ICONO EDITAR VA A EDITAR
+                                        onClick={() => navigate(`/incidencias/${i.id}/editar`)}
+                                        sx={{ color: '#94a3b8', '&:hover': { color: '#3b82f6' } }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </TableCell>
+                              </TableRow>
                           ))}
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={PRIORIDADES[i.prioridad].label}
-                          size="small"
-                          color={PRIORIDADES[i.prioridad].color}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {new Date(i.fecha_apertura).toLocaleDateString('es-ES')}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Editar">
-                          <IconButton size="small"
-                            onClick={() => navigate(`/incidencias/${i.id}`)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {/* Borrar SOLO para admin */}
-                        {puedeEliminarIncidencias && (
-                          <Tooltip title="Eliminar">
-                            <IconButton size="small" color="error"
-                              onClick={() => setABorrar(i)}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
 
-            <TablePagination
-              component="div"
-              count={filtradas.length}
-              page={pagina}
-              onPageChange={(_e, p) => setPagina(p)}
-              rowsPerPage={filasPorPagina}
-              onRowsPerPageChange={(e) => {
-                setFilasPorPagina(Number(e.target.value));
-                setPagina(0);
-              }}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              labelRowsPerPage="Filas por página:"
-            />
-          </>
-        )}
-      </Paper>
-
-      <DialogoConfirmacion
-        abierto={!!aBorrar}
-        titulo="Eliminar incidencia"
-        mensaje={
-          aBorrar
-            ? `¿Seguro que quieres eliminar la incidencia "${aBorrar.titulo}"? Esta acción no se puede deshacer.`
-            : ''
-        }
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarBorrado}
-        onCancelar={() => setABorrar(null)}
-        cargando={borrando}
-      />
-    </Container>
+                    <TablePagination
+                        component="div"
+                        count={incidenciasFiltradas.length}
+                        page={pagina}
+                        onPageChange={(_e, p) => setPagina(p)}
+                        rowsPerPage={filasPorPagina}
+                        onRowsPerPageChange={(e) => {
+                          setFilasPorPagina(Number(e.target.value));
+                          setPagina(0);
+                        }}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        labelRowsPerPage="Filas por página:"
+                        sx={{
+                          color: '#94a3b8',
+                          borderTop: '1px solid #1e293b',
+                          '.MuiTablePagination-selectIcon': { color: '#94a3b8' }
+                        }}
+                    />
+                  </>
+              )}
+            </Paper>
+          </Box>
+        </Container>
+      </Box>
   );
 }

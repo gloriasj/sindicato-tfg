@@ -1,8 +1,6 @@
 // src/pages/Usuarios.jsx
 // -------------------------------------------------------
 // Panel de gestión de usuarios del sistema.
-// Acceso exclusivo para el Administrador. Permite listar usuarios,
-// modificar su rol operativo, cambiar su email y activar/desactivar cuentas.
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
@@ -21,6 +19,38 @@ import {
 import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
+// --- ESTILOS VISUALES ---
+const cardStyle = {
+    background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
+    borderRadius: 4,
+    border: '1px solid rgba(255,255,255,0.06)',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+};
+
+const inputStyle = {
+    '& .MuiInputLabel-root': { color: '#94a3b8' },
+    '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+    '& .MuiOutlinedInput-root': {
+        color: '#fff',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        '& fieldset': { borderColor: '#1e293b' },
+        '&:hover fieldset': { borderColor: '#475569' },
+        '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
+    },
+    '& .MuiSvgIcon-root': { color: '#94a3b8' },
+};
+
+const dialogPaperStyle = {
+    background: '#0c1428',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    color: '#fff',
+    boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+};
+
+const tableHeadStyle = { color: '#94a3b8', borderBottom: '1px solid #1e293b', fontWeight: 600, bgcolor: 'rgba(0,0,0,0.2)' };
+const tableCellStyle = { color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)' };
+
 export default function Usuarios() {
     const { exito, error: notificarError } = useNotificacion();
 
@@ -28,15 +58,12 @@ export default function Usuarios() {
     const [cargando, setCargando] = useState(true);
     const [error, setError]       = useState(null);
 
-    // Estados para el Modal de Editar Email
     const [modalAbierto, setModalAbierto] = useState(false);
     const [usuarioEditar, setUsuarioEditar] = useState(null);
     const [nuevoEmail, setNuevoEmail]       = useState('');
     const [guardandoEmail, setGuardandoEmail] = useState(false);
 
-    useEffect(() => {
-        cargarUsuarios();
-    }, []);
+    useEffect(() => { cargarUsuarios(); }, []);
 
     async function cargarUsuarios() {
         setCargando(true);
@@ -67,7 +94,7 @@ export default function Usuarios() {
             setUsuarios((prev) =>
                 prev.map((u) => (u.id === usuarioId ? { ...u, rol: nuevoRol } : u))
             );
-            exito(`Rol actualizado correctamente a ${nuevoRol}`);
+            exito(`Rol actualizado correctamente`);
         }
     }
 
@@ -83,11 +110,10 @@ export default function Usuarios() {
             setUsuarios((prev) =>
                 prev.map((u) => (u.id === usuarioId ? { ...u, activo: nuevoEstado } : u))
             );
-            exito(nuevoEstado ? 'Usuario activado correctamente' : 'Usuario desactivado correctamente');
+            exito(nuevoEstado ? 'Usuario activado' : 'Usuario desactivado');
         }
     }
 
-    // --- LÓGICA PARA ABRIR MODAL Y GUARDAR EL EMAIL ---
     function abrirModalEmail(usuario) {
         setUsuarioEditar(usuario);
         setNuevoEmail(usuario.email || '');
@@ -113,130 +139,133 @@ export default function Usuarios() {
             setUsuarios((prev) =>
                 prev.map((u) => (u.id === usuarioEditar.id ? { ...u, email: nuevoEmail.trim() } : u))
             );
-            exito('Correo electrónico actualizado con éxito');
+            exito('Correo actualizado');
             setModalAbierto(false);
         }
     }
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box mb={4}>
-                <Typography variant="h4" fontWeight={600}>Gestión de Usuarios</Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Control de acceso, edición de credenciales y activación de cuentas del personal sindical.
-                </Typography>
-            </Box>
+        <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
+            <Container maxWidth="lg">
 
-            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+                <Box mb={8}>
+                    <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Gestión de Usuarios</Typography>
+                    <Typography variant="body1" sx={{ color: '#94a3b8', mt: 0.5 }}>
+                        Control de acceso, edición de credenciales y activación de cuentas del personal.
+                    </Typography>
+                </Box>
 
-            <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-                {cargando ? (
-                    <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress /></Box>
-                ) : usuarios.length === 0 ? (
-                    <Box sx={{ p: 6, textAlign: 'center' }}>
-                        <Typography color="text.secondary">No hay usuarios registrados en el sistema.</Typography>
-                    </Box>
-                ) : (
-                    <TableContainer>
-                        <Table>
-                            <TableHead>
-                                <TableRow sx={{ bgcolor: 'grey.50' }}>
-                                    <TableCell><strong>Usuario</strong></TableCell>
-                                    <TableCell><strong>Email</strong></TableCell>
-                                    <TableCell><strong>Rol del Sistema</strong></TableCell>
-                                    <TableCell><strong>Estado de Cuenta</strong></TableCell>
-                                    <TableCell align="right"><strong>Acciones</strong></TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {usuarios.map((u) => {
-                                    const iniciales = ((u.nombre?.[0] ?? '') + (u.apellidos?.[0] ?? '')).toUpperCase();
-                                    return (
-                                        <TableRow key={u.id} hover>
-                                            <TableCell>
-                                                <Stack direction="row" spacing={2} alignItems="center">
-                                                    <Avatar sx={{ bgcolor: u.rol === 'admin' ? 'primary.main' : 'orange.main', width: 36, height: 36, fontSize: 14 }}>
-                                                        {iniciales || '?'}
-                                                    </Avatar>
-                                                    <Box>
-                                                        <Typography variant="body2" fontWeight={500}>
-                                                            {u.apellidos ? `${u.apellidos}, ${u.nombre}` : u.nombre || 'Usuario sin nombre'}
+                {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+                {/* AÑADIDO mt: 4 PARA SEPARAR EL PAPER DEL SUBTÍTULO */}
+                <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden', mt: 4 }}>
+                    {cargando ? (
+                        <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress /></Box>
+                    ) : usuarios.length === 0 ? (
+                        <Box sx={{ p: 6, textAlign: 'center' }}>
+                            <Typography sx={{ color: '#94a3b8' }}>No hay usuarios registrados.</Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={tableHeadStyle}>Usuario</TableCell>
+                                        <TableCell sx={tableHeadStyle}>Email</TableCell>
+                                        <TableCell sx={tableHeadStyle}>Rol del Sistema</TableCell>
+                                        <TableCell sx={tableHeadStyle}>Estado</TableCell>
+                                        <TableCell align="right" sx={tableHeadStyle}>Acciones</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {usuarios.map((u) => {
+                                        const iniciales = ((u.nombre?.[0] ?? '') + (u.apellidos?.[0] ?? '')).toUpperCase();
+                                        const esActivo = u.activo ?? true;
+                                        return (
+                                            <TableRow key={u.id} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                                                <TableCell sx={tableCellStyle}>
+                                                    <Stack direction="row" spacing={2} alignItems="center">
+                                                        <Avatar sx={{ bgcolor: u.rol === 'admin' ? '#3b82f6' : '#94a3b8', width: 36, height: 36, fontSize: 14 }}>
+                                                            {iniciales || '?'}
+                                                        </Avatar>
+                                                        <Typography variant="body2" fontWeight={600} sx={{ color: '#ffffff' }}>
+                                                            {u.apellidos ? `${u.apellidos}, ${u.nombre}` : u.nombre || 'Sin nombre'}
                                                         </Typography>
-                                                    </Box>
-                                                </Stack>
-                                            </TableCell>
-                                            <TableCell>{u.email || '—'}</TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={u.rol || 'delegado'}
-                                                    onChange={(e) => cambiarRol(u.id, e.target.value)}
-                                                    size="small"
-                                                    startAdornment={
-                                                        u.rol === 'admin' ?
-                                                            <AdminIcon color="primary" fontSize="small" sx={{ mr: 1 }} /> :
-                                                            <DelegadoIcon color="action" fontSize="small" sx={{ mr: 1 }} />
-                                                    }
-                                                    sx={{ minWidth: 140 }}
-                                                >
-                                                    <MenuItem value="admin">Administrador</MenuItem>
-                                                    <MenuItem value="delegado">Delegado</MenuItem>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Switch
-                                                            checked={u.activo ?? true}
-                                                            onChange={(e) => cambiarEstadoActivo(u.id, e.target.checked)}
-                                                            color="success"
-                                                        />
-                                                    }
-                                                    label={u.activo ?? true ? 'Activo' : 'Inactivo'}
-                                                />
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Tooltip title="Editar Email">
-                                                    <IconButton size="small" onClick={() => abrirModalEmail(u)}>
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                )}
-            </Paper>
+                                                    </Stack>
+                                                </TableCell>
+                                                <TableCell sx={{ color: '#94a3b8' }}>{u.email || '—'}</TableCell>
+                                                <TableCell sx={tableCellStyle}>
+                                                    <Select
+                                                        value={u.rol || 'delegado'}
+                                                        onChange={(e) => cambiarRol(u.id, e.target.value)}
+                                                        size="small"
+                                                        sx={{ color: '#fff', '.MuiOutlinedInput-notchedOutline': { borderColor: '#1e293b' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#475569' } }}
+                                                    >
+                                                        <MenuItem value="admin">Administrador</MenuItem>
+                                                        <MenuItem value="delegado">Delegado</MenuItem>
+                                                    </Select>
+                                                </TableCell>
+                                                <TableCell sx={tableCellStyle}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Switch
+                                                                checked={esActivo}
+                                                                onChange={(e) => cambiarEstadoActivo(u.id, e.target.checked)}
+                                                                color="success"
+                                                            />
+                                                        }
+                                                        label={
+                                                            <Typography
+                                                                variant="body2"
+                                                                sx={{ color: esActivo ? '#22c55e' : '#94a3b8', fontWeight: 600 }}
+                                                            >
+                                                                {esActivo ? 'Activo' : 'Inactivo'}
+                                                            </Typography>
+                                                        }
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="right" sx={tableCellStyle}>
+                                                    <Tooltip title="Editar Email">
+                                                        <IconButton size="small" onClick={() => abrirModalEmail(u)} sx={{ color: '#94a3b8', '&:hover': { color: '#fff' } }}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </Paper>
 
-            {/* MODAL PARA EDITAR EMAIL */}
-            <Dialog open={modalAbierto} onClose={() => !guardandoEmail && setModalAbierto(false)} fullWidth maxWidth="xs">
-                <form onSubmit={guardarEmail}>
-                    <DialogTitle>Modificar Correo Electrónico</DialogTitle>
-                    <DialogContent dividers>
-                        <Typography variant="body2" color="text.secondary" mb={2}>
-                            Estás editando las credenciales de contacto de <strong>{usuarioEditar?.nombre} {usuarioEditar?.apellidos}</strong>.
-                        </Typography>
-                        <TextField
-                            label="Nuevo Email"
-                            type="email"
-                            required
-                            fullWidth
-                            value={nuevoEmail}
-                            onChange={(e) => setNuevoEmail(e.target.value)}
-                            placeholder="correo@sindicato.es"
-                            sx={{ mt: 1 }}
-                        />
-                    </DialogContent>
-                    <DialogActions sx={{ p: 2 }}>
-                        <Button onClick={() => setModalAbierto(false)} disabled={guardandoEmail}>Cancelar</Button>
-                        <Button type="submit" variant="contained" disabled={guardandoEmail}>
-                            {guardandoEmail ? 'Guardando...' : 'Guardar Cambios'}
-                        </Button>
-                    </DialogActions>
-                </form>
-            </Dialog>
-        </Container>
+                <Dialog open={modalAbierto} onClose={() => !guardandoEmail && setModalAbierto(false)} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperStyle }}>
+                    <form onSubmit={guardarEmail}>
+                        <DialogTitle>Modificar Correo Electrónico</DialogTitle>
+                        <DialogContent dividers sx={{ borderColor: '#1e293b' }}>
+                            <Typography variant="body2" sx={{ color: '#cbd5e1', mb: 2 }}>
+                                Estás editando el email de <strong>{usuarioEditar?.nombre}</strong>.
+                            </Typography>
+                            <TextField
+                                label="Nuevo Email"
+                                type="email"
+                                required
+                                fullWidth
+                                value={nuevoEmail}
+                                onChange={(e) => setNuevoEmail(e.target.value)}
+                                sx={inputStyle}
+                            />
+                        </DialogContent>
+                        <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
+                            <Button onClick={() => setModalAbierto(false)} disabled={guardandoEmail} sx={{ color: '#94a3b8' }}>Cancelar</Button>
+                            <Button type="submit" variant="contained" disabled={guardandoEmail}>
+                                {guardandoEmail ? 'Guardando...' : 'Guardar'}
+                            </Button>
+                        </DialogActions>
+                    </form>
+                </Dialog>
+            </Container>
+        </Box>
     );
 }

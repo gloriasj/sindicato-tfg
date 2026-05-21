@@ -21,6 +21,34 @@ import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
+// --- ESTILOS VISUALES ---
+const cardStyle = {
+  background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
+  borderRadius: 4,
+  border: '1px solid rgba(255,255,255,0.06)',
+  boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+};
+
+const inputStyle = {
+  '& .MuiInputLabel-root': { color: '#94a3b8' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+  '& .MuiOutlinedInput-root': {
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    '& fieldset': { borderColor: '#1e293b' },
+    '&:hover fieldset': { borderColor: '#475569' },
+    '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
+  },
+};
+
+const dialogPaperStyle = {
+  background: '#0c1428',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 3,
+  color: '#fff',
+  boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+};
+
 export default function Sectores() {
   const { exito, error: notificarError } = useNotificacion();
 
@@ -30,7 +58,7 @@ export default function Sectores() {
 
   // Estados para el Modal de Crear/Editar
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [sectorActual, setSectorActual] = useState(null); // null = Crear, objeto = Editar
+  const [sectorActual, setSectorActual] = useState(null);
   const [formulario, setFormulario]     = useState({ nombre: '', descripcion: '' });
   const [guardando, setGuardando]       = useState(false);
 
@@ -58,7 +86,6 @@ export default function Sectores() {
     setCargando(false);
   }
 
-  // --- LÓGICA DE CREAR / EDITAR ---
   function abrirModalNuevo() {
     setSectorActual(null);
     setFormulario({ nombre: '', descripcion: '' });
@@ -108,8 +135,6 @@ export default function Sectores() {
     if (!aBorrar) return;
     setBorrando(true);
 
-    // Al intentar borrar, si hay afiliados en este sector, PostgreSQL lanzará
-    // un error de "Foreign Key" automáticamente, lo cual es muy seguro.
     const { error } = await supabase.from('sectores').delete().eq('id', aBorrar.id);
 
     setBorrando(false);
@@ -128,104 +153,148 @@ export default function Sectores() {
   }
 
   return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-          <Box>
-            <Typography variant="h4" fontWeight={600}>Sectores</Typography>
-            <Typography variant="body1" color="text.secondary">
-              Catálogo de sectores profesionales del sindicato
-            </Typography>
-          </Box>
-          <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={abrirModalNuevo}
-          >
-            Nuevo Sector
-          </Button>
-        </Stack>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
+        <Container maxWidth="md">
 
-        <Paper elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
-          {cargando ? (
-              <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : (
-              <List disablePadding>
-                {sectores.map((s, i) => {
-                  const totalAfiliados = conteos[s.nombre] ?? 0;
-                  return (
-                      <ListItem
-                          key={s.id}
-                          divider={i < sectores.length - 1}
-                          secondaryAction={
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Chip label={`${totalAfiliados} afiliado(s)`} size="small" variant="outlined" sx={{ mr: 2 }} />
-                              <Tooltip title="Editar">
-                                <IconButton edge="end" onClick={() => abrirModalEditar(s)}>
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Eliminar">
-                                <IconButton edge="end" color="error" onClick={() => setABorrar(s)}>
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                          }
-                      >
-                        <ListItemIcon><CategoryIcon color="primary" /></ListItemIcon>
-                        <ListItemText
-                            primary={s.nombre}
-                            secondary={s.descripcion || 'Sin descripción'}
-                            primaryTypographyProps={{ fontWeight: 500 }}
-                        />
-                      </ListItem>
-                  );
-                })}
-              </List>
-          )}
-        </Paper>
-
-        {/* MODAL CREAR / EDITAR */}
-        <Dialog open={modalAbierto} onClose={() => !guardando && setModalAbierto(false)} fullWidth maxWidth="sm">
-          <form onSubmit={guardarSector}>
-            <DialogTitle>{sectorActual ? 'Editar Sector' : 'Nuevo Sector'}</DialogTitle>
-            <DialogContent dividers>
-              <Stack spacing={3} sx={{ mt: 1 }}>
-                <TextField
-                    label="Nombre del sector"
-                    required
-                    fullWidth
-                    value={formulario.nombre}
-                    onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })}
-                />
-                <TextField
-                    label="Descripción (Opcional)"
-                    multiline rows={3}
-                    fullWidth
-                    value={formulario.descripcion}
-                    onChange={(e) => setFormulario({ ...formulario, descripcion: e.target.value })}
-                />
-              </Stack>
-            </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-              <Button onClick={() => setModalAbierto(false)} disabled={guardando}>Cancelar</Button>
-              <Button type="submit" variant="contained" disabled={guardando}>
-                {guardando ? 'Guardando...' : 'Guardar'}
+          {/* HEADER AJUSTADO */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+            <Box>
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Sectores</Typography>
+              <Typography sx={{ color: '#94a3b8', mt: 0.5 }}>Catálogo de sectores profesionales del sindicato</Typography>
+            </Box>
+            <Stack direction="row" spacing={2}>
+              <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={abrirModalNuevo}
+                  size="small"
+              >
+                Nuevo Sector
               </Button>
-            </DialogActions>
-          </form>
-        </Dialog>
+            </Stack>
+          </Box>
 
-        {/* MODAL CONFIRMAR BORRADO */}
-        <DialogoConfirmacion
-            abierto={!!aBorrar}
-            titulo="Eliminar sector"
-            mensaje={`¿Seguro que quieres eliminar el sector "${aBorrar?.nombre}"? Esta acción no se puede deshacer.`}
-            textoConfirmar="Eliminar"
-            onConfirmar={confirmarBorrado}
-            onCancelar={() => setABorrar(null)}
-            cargando={borrando}
-        />
-      </Container>
+          <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
+            {cargando ? (
+                <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress /></Box>
+            ) : sectores.length === 0 ? (
+                <Box sx={{ p: 8, textAlign: 'center' }}>
+                  <CategoryIcon sx={{ fontSize: 60, color: '#475569', mb: 2 }} />
+                  <Typography sx={{ color: '#94a3b8', fontSize: '1.1rem' }}>
+                    No hay sectores registrados en el sistema.
+                  </Typography>
+                </Box>
+            ) : (
+                <List disablePadding>
+                  {sectores.map((s, i) => {
+                    const totalAfiliados = conteos[s.nombre] ?? 0;
+                    return (
+                        <ListItem
+                            key={s.id}
+                            sx={{
+                              borderBottom: i === sectores.length - 1 ? 'none' : '1px solid #1e293b',
+                              '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' },
+                              transition: 'background-color 0.2s',
+                              py: 2,
+                              px: 3,
+                            }}
+                            secondaryAction={
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip
+                                    label={`${totalAfiliados} afiliado(s)`}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ mr: 2, color: '#94a3b8', borderColor: '#475569' }}
+                                />
+                                <Tooltip title="Editar">
+                                  <IconButton edge="end" onClick={() => abrirModalEditar(s)} sx={{ color: '#94a3b8', '&:hover': { color: '#fff' } }}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Eliminar">
+                                  <IconButton edge="end" color="error" onClick={() => setABorrar(s)}>
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            }
+                        >
+                          <ListItemIcon>
+                            <CategoryIcon sx={{ color: '#3b82f6' }} />
+                          </ListItemIcon>
+                          {/* LIST ITEM TEXT CON TYPOGRAPHY FORZADO */}
+                          <ListItemText
+                              primary={
+                                <Typography sx={{ color: '#ffffff !important', fontWeight: '700 !important', fontSize: '1.1rem' }}>
+                                  {s.nombre}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography sx={{ color: '#cbd5e1 !important', mt: 0.5 }}>
+                                  {s.descripcion || 'Sin descripción'}
+                                </Typography>
+                              }
+                          />
+                        </ListItem>
+                    );
+                  })}
+                </List>
+            )}
+          </Paper>
+
+          {/* MODAL CREAR / EDITAR */}
+          <Dialog
+              open={modalAbierto}
+              onClose={() => !guardando && setModalAbierto(false)}
+              fullWidth
+              maxWidth="sm"
+              PaperProps={{ sx: dialogPaperStyle }}
+          >
+            <form onSubmit={guardarSector}>
+              <DialogTitle sx={{ fontWeight: 600, borderBottom: '1px solid #1e293b' }}>
+                {sectorActual ? 'Editar Sector' : 'Nuevo Sector'}
+              </DialogTitle>
+              <DialogContent sx={{ p: 4 }}>
+                <Stack spacing={3} sx={{ mt: 1 }}>
+                  <TextField
+                      label="Nombre del sector"
+                      required
+                      fullWidth
+                      value={formulario.nombre}
+                      onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })}
+                      sx={inputStyle}
+                  />
+                  <TextField
+                      label="Descripción (Opcional)"
+                      multiline rows={3}
+                      fullWidth
+                      value={formulario.descripcion}
+                      onChange={(e) => setFormulario({ ...formulario, descripcion: e.target.value })}
+                      sx={inputStyle}
+                  />
+                </Stack>
+              </DialogContent>
+              <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
+                <Button onClick={() => setModalAbierto(false)} disabled={guardando} sx={{ color: '#94a3b8' }}>
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="contained" disabled={guardando}>
+                  {guardando ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </DialogActions>
+            </form>
+          </Dialog>
+
+          <DialogoConfirmacion
+              abierto={!!aBorrar}
+              titulo="Eliminar sector"
+              mensaje={`¿Seguro que quieres eliminar el sector "${aBorrar?.nombre}"? Esta acción no se puede deshacer.`}
+              textoConfirmar="Eliminar"
+              onConfirmar={confirmarBorrado}
+              onCancelar={() => setABorrar(null)}
+              cargando={borrando}
+          />
+        </Container>
+      </Box>
   );
 }

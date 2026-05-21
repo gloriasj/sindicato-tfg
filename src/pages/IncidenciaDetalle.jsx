@@ -1,31 +1,30 @@
 // src/pages/IncidenciaDetalle.jsx
-// -------------------------------------------------------
-// Vista de detalle de una incidencia. Solo el admin puede
-// eliminarla; los delegados pueden editar y cambiar estado
-// pero no borrar.
-// -------------------------------------------------------
-
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Paper, Grid,
-  Chip, Avatar, Divider, Alert, CircularProgress,
-  MenuItem, Select, FormControl,
+  Chip, Avatar, Divider, Alert, CircularProgress, Tooltip, IconButton
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   CalendarToday as CalendarIcon,
-  Person as PersonIcon,
-  Category as CategoryIcon,
-  Business as BusinessIcon,
+  Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
+  Image as ImageIcon,
+  Description as DescriptionIcon,
+  InsertDriveFile as FileIcon,
+  AttachFile as AttachFileIcon,
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
-import { useNotificacion } from '../context/NotificacionContext';
-import { usePermisos } from '../lib/usePermisos';
-import DialogoConfirmacion from '../components/DialogoConfirmacion';
-import AdjuntosIncidencia from '../components/AdjuntosIncidencia';
+
+const cardStyle = {
+  background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
+  borderRadius: 4,
+  border: '1px solid rgba(255,255,255,0.06)',
+  boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
+  p: 3,
+  mb: 3
+};
 
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: 'warning' },
@@ -42,14 +41,11 @@ const PRIORIDADES = {
 export default function IncidenciaDetalle() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { exito, error: notificarError } = useNotificacion();
-  const { puedeEliminarIncidencias } = usePermisos();
 
   const [incidencia, setIncidencia] = useState(null);
+  const [archivos, setArchivos]     = useState([]); // Estado para los archivos
   const [cargando, setCargando]     = useState(true);
   const [error, setError]           = useState(null);
-  const [aBorrar, setABorrar]       = useState(false);
-  const [borrando, setBorrando]     = useState(false);
 
   useEffect(() => { cargar(); }, [id]);
 
@@ -57,240 +53,226 @@ export default function IncidenciaDetalle() {
     setCargando(true);
     setError(null);
 
-    const { data, error } = await supabase
-      .from('incidencias')
-      .select(`
+    // 1. Cargamos los datos de la incidencia y del afiliado
+    const { data: dataIncidencia, error: errIncidencia } = await supabase
+        .from('incidencias')
+        .select(`
         *,
-        afiliado:afiliados(
-          id, dni, nombre, apellidos, email, telefono, empresa,
-          sector:sectores(id, nombre)
-        )
+        afiliado:afiliados(id, dni, nombre, apellidos, email, telefono, empresa, sector:sectores(id, nombre))
       `)
-      .eq('id', id)
-      .single();
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      setError('Incidencia no encontrada: ' + error.message);
-    } else {
-      setIncidencia(data);
+    if (errIncidencia) {
+      setError('Incidencia no encontrada');
+      setCargando(false);
+      return;
     }
+
+    setIncidencia(dataIncidencia);
+
+    // 2. Cargamos los archivos adjuntos directamente asociados a esta incidencia
+    const { data: dataArchivos } = await supabase
+        .from('archivos_adjuntos')
+        .select('*')
+        .eq('incidencia_id', id)
+        .order('subido_at', { ascending: false });
+
+    setArchivos(dataArchivos ?? []);
     setCargando(false);
   }
 
-  async function cambiarEstado(nuevoEstado) {
-    const datos = {
-      estado: nuevoEstado,
-      fecha_cierre: nuevoEstado === 'resuelta' ? new Date().toISOString() : null,
-    };
-    const { error } = await supabase
-      .from('incidencias')
-      .update(datos)
-      .eq('id', id);
+  // Función exclusiva para descargar el archivo mediante una URL firmada temporal
+  async function handleDescargar(archivo) {
+    try {
+      const { data, error } = await supabase.storage
+          .from('incidencias-adjuntos')
+          .createSignedUrl(archivo.ruta_storage, 60);
 
-    if (error) {
-      notificarError('No se pudo actualizar el estado: ' + error.message);
-    } else {
-      setIncidencia((prev) => ({ ...prev, ...datos }));
-      exito(`Estado actualizado a "${ESTADOS[nuevoEstado].label}"`);
+      if (error) throw error;
+
+      const enlace = document.createElement('a');
+      enlace.href = data.signedUrl;
+      enlace.download = archivo.nombre_original;
+      enlace.target = '_blank';
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+    } catch (err) {
+      console.error('No se pudo descargar el archivo:', err.message);
     }
   }
 
-  async function confirmarBorrado() {
-    setBorrando(true);
-    const { error } = await supabase
-      .from('incidencias')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      notificarError('No se pudo eliminar: ' + error.message);
-      setBorrando(false);
-      setABorrar(false);
-    } else {
-      exito('Incidencia eliminada correctamente');
-      navigate('/incidencias');
-    }
-  }
-
-  if (cargando) {
-    return (
-      <Box sx={{ p: 6, textAlign: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error || !incidencia) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/incidencias')}>
-          Volver al listado
-        </Button>
-        <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>
-      </Container>
-    );
-  }
+  if (cargando) return <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress /></Box>;
+  if (error || !incidencia) return <Container maxWidth="xl" sx={{ py: 4 }}><Alert severity="error">{error}</Alert></Container>;
 
   const af = incidencia.afiliado;
   const iniciales = af ? (af.nombre[0] + af.apellidos[0]).toUpperCase() : '??';
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/incidencias')}>
-          Volver al listado
-        </Button>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" startIcon={<EditIcon />}
-            onClick={() => navigate(`/incidencias/${id}`)}>
-            Editar
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Stack direction="row" alignItems="center" mb={4}>
+          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/incidencias')} sx={{ color: '#fff' }}>
+            Volver al listado
           </Button>
-          {/* Eliminar SOLO para admin */}
-          {puedeEliminarIncidencias && (
-            <Button variant="outlined" color="error" startIcon={<DeleteIcon />}
-              onClick={() => setABorrar(true)}>
-              Eliminar
-            </Button>
-          )}
         </Stack>
-      </Stack>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, border: 1, borderColor: 'divider' }}>
-            <Stack direction="row" spacing={1} mb={1}>
-              <Chip label={ESTADOS[incidencia.estado].label}
-                color={ESTADOS[incidencia.estado].color} size="small" />
-              <Chip label={`Prioridad ${PRIORIDADES[incidencia.prioridad].label.toLowerCase()}`}
-                color={PRIORIDADES[incidencia.prioridad].color} size="small" />
-            </Stack>
+        <Grid container spacing={3}>
+          {/* Columna Principal */}
+          <Grid item xs={12} md={8}>
+            <Paper sx={cardStyle}>
+              <Stack direction="row" spacing={2} alignItems="center" mb={3}>
+                <Chip
+                    label={ESTADOS[incidencia.estado].label}
+                    color={ESTADOS[incidencia.estado].color}
+                    sx={{ fontWeight: 'bold', color: incidencia.estado === 'pendiente' ? '#000' : '#fff' }}
+                />
+                <Chip
+                    label={`Prioridad ${PRIORIDADES[incidencia.prioridad].label}`}
+                    color={PRIORIDADES[incidencia.prioridad].color}
+                    sx={{ color: '#fff', bgcolor: incidencia.prioridad === 'baja' ? '#475569' : undefined }}
+                />
+              </Stack>
 
-            <Typography variant="h4" fontWeight={600} mb={2}>
-              {incidencia.titulo}
-            </Typography>
-
-            <Typography variant="overline" color="text.secondary">Descripción</Typography>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
-              {incidencia.descripcion}
-            </Typography>
-
-            {incidencia.resolucion && (
-              <>
-                <Divider sx={{ my: 3 }} />
-                <Typography variant="overline" color="text.secondary">
-                  Resolución / observaciones
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
-                  {incidencia.resolucion}
-                </Typography>
-              </>
-            )}
-
-            <Divider sx={{ my: 3 }} />
-
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="body2" color="text.secondary">
-                Cambiar estado:
-              </Typography>
-              <FormControl size="small" sx={{ minWidth: 180 }}>
-                <Select value={incidencia.estado}
-                  onChange={(e) => cambiarEstado(e.target.value)}>
-                  {Object.entries(ESTADOS).map(([k, v]) => (
-                    <MenuItem key={k} value={k}>{v.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Stack>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          {af && (
-            <Paper elevation={0} sx={{ p: 3, mb: 2, border: 1, borderColor: 'divider' }}>
-              <Typography variant="overline" color="text.secondary">
-                Afiliado afectado
+              <Typography variant="h4" fontWeight={700} sx={{ color: '#fff', mb: 3 }}>
+                {incidencia.titulo}
               </Typography>
 
-              <Stack direction="row" spacing={2} alignItems="center" mt={1.5} mb={2}>
-                <Avatar sx={{ bgcolor: 'primary.main' }}>{iniciales}</Avatar>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="body1" fontWeight={500} noWrap>
-                    {af.nombre} {af.apellidos}
+              <Typography variant="overline" sx={{ color: '#94a3b8' }}>Descripción</Typography>
+              <Typography variant="body1" sx={{ color: '#fff', whiteSpace: 'pre-line', mt: 0.5, mb: 3 }}>
+                {incidencia.descripcion}
+              </Typography>
+
+              {incidencia.resolucion && (
+                  <>
+                    <Divider sx={{ borderColor: '#1e293b', my: 3 }} />
+                    <Typography variant="overline" sx={{ color: '#94a3b8' }}>Resolución / observaciones</Typography>
+                    <Typography variant="body1" sx={{ color: '#fff', mt: 0.5 }}>{incidencia.resolucion}</Typography>
+                  </>
+              )}
+            </Paper>
+
+            {/* SECCIÓN DE CONSULTA DE ARCHIVOS (100% LECTURA Y DESCARGA) */}
+            <Paper sx={{ p: 3, border: '1px solid #1e293b', bgcolor: '#131c33', borderRadius: 4 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" mb={3}>
+                <AttachFileIcon sx={{ color: '#3b82f6' }} />
+                <Box>
+                  <Typography variant="h6" fontWeight={600} sx={{ color: '#fff' }}>
+                    Documentación adjunta
                   </Typography>
-                  <Typography variant="caption" color="text.secondary"
-                    sx={{ fontFamily: 'monospace' }}>
-                    {af.dni}
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                    {archivos.length} archivo(s) vinculados a la incidencia
                   </Typography>
                 </Box>
               </Stack>
 
-              <Stack spacing={1.5} mb={2}>
-                {af.sector && (
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <CategoryIcon fontSize="small" color="action" />
-                    <Typography variant="body2">{af.sector.nombre}</Typography>
-                  </Stack>
-                )}
-                {af.empresa && (
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <BusinessIcon fontSize="small" color="action" />
-                    <Typography variant="body2">{af.empresa}</Typography>
-                  </Stack>
-                )}
-              </Stack>
+              {archivos.length === 0 ? (
+                  <Alert severity="info" variant="outlined" sx={{ border: 'none', bgcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}>
+                    No se han adjuntado archivos en esta incidencia.
+                  </Alert>
+              ) : (
+                  <Stack spacing={1.5}>
+                    {archivos.map((archivo) => (
+                        <Paper
+                            key={archivo.id}
+                            variant="outlined"
+                            sx={{
+                              p: 1.5,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                              bgcolor: 'rgba(255,255,255,0.03)',
+                              borderColor: '#1e293b',
+                              '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+                              transition: 'background-color 0.15s',
+                            }}
+                        >
+                          {iconoTipo(archivo.tipo_mime)}
 
-              <Button fullWidth variant="outlined" size="small"
-                startIcon={<PersonIcon />}
-                component={RouterLink}
-                to={`/afiliados/${af.id}/detalle`}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={500} sx={{ color: '#fff' }} noWrap>
+                              {archivo.nombre_original}
+                            </Typography>
+                            <Stack direction="row" spacing={1} mt={0.3} alignItems="center">
+                              <Chip
+                                  label={formatearTamano(archivo.tamano_bytes)}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ height: 20, fontSize: '0.7rem', color: '#94a3b8', borderColor: '#475569' }}
+                              />
+                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                Subido el {new Date(archivo.subido_at).toLocaleString('es-ES')}
+                              </Typography>
+                            </Stack>
+                          </Box>
+
+                          <Tooltip title="Descargar archivo">
+                            <IconButton size="small" onClick={() => handleDescargar(archivo)} sx={{ color: '#fff' }}>
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Paper>
+                    ))}
+                  </Stack>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Columna Lateral */}
+          <Grid item xs={12} md={4}>
+            <Paper sx={cardStyle}>
+              <Typography variant="overline" sx={{ color: '#94a3b8' }}>Afiliado afectado</Typography>
+              <Stack direction="row" spacing={2} alignItems="center" mt={1.5} mb={2}>
+                <Avatar sx={{ bgcolor: '#3b82f6' }}>{iniciales}</Avatar>
+                <Box>
+                  <Typography sx={{ color: '#fff', fontWeight: 600 }}>{af?.nombre} {af?.apellidos}</Typography>
+                  <Typography sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{af?.dni}</Typography>
+                </Box>
+              </Stack>
+              <Button fullWidth variant="outlined" size="small" sx={{ color: '#fff', borderColor: '#1e293b' }}
+                      component={RouterLink} to={`/afiliados/${af?.id}/detalle`}>
                 Ver ficha completa
               </Button>
             </Paper>
-          )}
 
-          <Paper elevation={0} sx={{ p: 3, border: 1, borderColor: 'divider' }}>
-            <Typography variant="overline" color="text.secondary">Fechas</Typography>
-
-            <Stack spacing={2} mt={1.5}>
-              <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                <CalendarIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Apertura</Typography>
-                  <Typography variant="body2">
-                    {new Date(incidencia.fecha_apertura).toLocaleString('es-ES')}
-                  </Typography>
-                </Box>
+            {/* Fechas */}
+            <Paper sx={cardStyle}>
+              <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                <CalendarIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
+                <Typography variant="overline" sx={{ color: '#94a3b8', m: 0 }}>Fechas</Typography>
               </Stack>
-
-              {incidencia.fecha_cierre && (
-                <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                  <CalendarIcon fontSize="small" color="action" sx={{ mt: 0.3 }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Cierre</Typography>
-                    <Typography variant="body2">
-                      {new Date(incidencia.fecha_cierre).toLocaleString('es-ES')}
-                    </Typography>
-                  </Box>
-                </Stack>
-              )}
-            </Stack>
-          </Paper>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>Apertura</Typography>
+                  <Typography sx={{ color: '#fff' }}>{new Date(incidencia.fecha_apertura).toLocaleString('es-ES')}</Typography>
+                </Box>
+                {incidencia.fecha_cierre && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Cierre</Typography>
+                      <Typography sx={{ color: '#fff' }}>{new Date(incidencia.fecha_cierre).toLocaleString('es-ES')}</Typography>
+                    </Box>
+                )}
+              </Stack>
+            </Paper>
+          </Grid>
         </Grid>
-
-        <Grid item xs={12}>
-          <AdjuntosIncidencia incidenciaId={incidencia.id} />
-        </Grid>
-      </Grid>
-
-      <DialogoConfirmacion
-        abierto={aBorrar}
-        titulo="Eliminar incidencia"
-        mensaje={`¿Seguro que quieres eliminar la incidencia "${incidencia.titulo}"? También se borrarán todos los archivos adjuntos. Esta acción no se puede deshacer.`}
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarBorrado}
-        onCancelar={() => setABorrar(false)}
-        cargando={borrando}
-      />
-    </Container>
+      </Container>
   );
+}
+
+// === Funciones auxiliares locales para mantener el aislamiento visual ===
+function iconoTipo(mime) {
+  const props = { sx: { color: '#94a3b8', fontSize: 28 } };
+  if (!mime) return <FileIcon {...props} />;
+  if (mime.startsWith('image/'))    return <ImageIcon {...props} sx={{ ...props.sx, color: '#3b82f6' }} />;
+  if (mime === 'application/pdf')   return <PdfIcon   {...props} sx={{ ...props.sx, color: '#ef4444' }} />;
+  if (mime.includes('word') || mime.includes('document')) return <DescriptionIcon {...props} sx={{ ...props.sx, color: '#3b82f6' }} />;
+  return <FileIcon {...props} />;
+}
+
+function formatearTamano(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }

@@ -1,19 +1,38 @@
 // src/pages/IncidenciaForm.jsx
-// -------------------------------------------------------
-// Formulario crear/editar incidencia, ahora con
-// notificaciones globales.
-// -------------------------------------------------------
-
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  Box, Container, Typography, Button, TextField, MenuItem,
-  Stack, Paper, Grid, Alert, CircularProgress, Divider,
-  Autocomplete,
+  Box, Typography, Button, TextField, MenuItem,
+  Stack, Grid, Alert, CircularProgress, Divider, Paper, IconButton
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
+import {
+  ArrowBack as ArrowBackIcon,
+  Save as SaveIcon,
+  CloudUpload as CloudUploadIcon,
+  Delete as DeleteIcon
+} from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { useNotificacion } from '../context/NotificacionContext';
+import AdjuntosIncidencia from '../components/AdjuntosIncidencia';
+
+const inputStyle = {
+  '& .MuiInputLabel-root': { color: '#94a3b8' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+  '& .MuiOutlinedInput-root': {
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    '& fieldset': { borderColor: '#1e293b' },
+    '&:hover fieldset': { borderColor: '#475569' },
+    '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
+  },
+  '& .Mui-disabled': {
+    color: '#ffffff !important',
+    WebkitTextFillColor: '#ffffff !important'
+  },
+  '& .MuiSelect-select': { color: '#fff' },
+  '& .MuiSvgIcon-root': { color: '#94a3b8' },
+};
 
 const ESTADO_INICIAL = {
   afiliado_id: '', titulo: '', descripcion: '',
@@ -25,219 +44,218 @@ export default function IncidenciaForm() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const esEdicion = id && id !== 'nuevo';
+  const { profile } = useAuth();
   const { exito, error: notificarError } = useNotificacion();
 
-  const [datos, setDatos]         = useState(ESTADO_INICIAL);
+  const [datos, setDatos] = useState(ESTADO_INICIAL);
   const [afiliados, setAfiliados] = useState([]);
-  const [cargando, setCargando]   = useState(true);
+  const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [errorForm, setErrorForm] = useState(null);
+
+  // Estado local para almacenar archivos elegidos antes de crear la incidencia
+  const [archivosNuevos, setArchivosNuevos] = useState([]);
+  const inputFileRef = useRef(null);
 
   useEffect(() => { cargarInicial(); }, [id]);
 
   async function cargarInicial() {
     setCargando(true);
-    setErrorForm(null);
-
-    const { data: afils, error: errAfil } = await supabase
-      .from('afiliados')
-      .select('id, dni, nombre, apellidos, sector:sectores(nombre)')
-      .eq('activo', true)
-      .order('apellidos');
-
-    if (errAfil) {
-      setErrorForm('No se pudieron cargar los afiliados: ' + errAfil.message);
-      setCargando(false);
-      return;
-    }
+    const { data: afils } = await supabase.from('afiliados').select('id, dni, nombre, apellidos').eq('activo', true);
     setAfiliados(afils ?? []);
 
     if (esEdicion) {
-      const { data, error } = await supabase
-        .from('incidencias')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        setErrorForm('Incidencia no encontrada: ' + error.message);
-      } else {
-        setDatos({
-          afiliado_id: data.afiliado_id,
-          titulo: data.titulo,
-          descripcion: data.descripcion,
-          estado: data.estado,
-          prioridad: data.prioridad,
-          resolucion: data.resolucion ?? '',
-        });
-      }
+      const { data } = await supabase.from('incidencias').select('*').eq('id', id).single();
+      if (data) setDatos(data);
     } else {
       const afiliadoParam = searchParams.get('afiliado');
-      if (afiliadoParam) {
-        setDatos((prev) => ({ ...prev, afiliado_id: Number(afiliadoParam) }));
-      }
+      if (afiliadoParam) setDatos(prev => ({ ...prev, afiliado_id: Number(afiliadoParam) }));
     }
-
     setCargando(false);
   }
+
+  const afiliadoSeleccionado = afiliados.find(a => a.id === datos.afiliado_id);
+  const nombreAfiliado = afiliadoSeleccionado
+      ? `${afiliadoSeleccionado.apellidos}, ${afiliadoSeleccionado.nombre}`
+      : 'Cargando...';
 
   function actualizar(campo, valor) {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   }
 
+  // Manejador para la cola de archivos locales en modo creación
+  function handleSeleccionarArchivosNuevos(e) {
+    const files = Array.from(e.target.files || []);
+    const validos = files.filter(f => f.size <= 10 * 1024 * 1024);
+    if (validos.length !== files.length) {
+      notificarError('Algunos archivos superan los 10 MB permitidos.');
+    }
+    setArchivosNuevos(prev => [...prev, ...validos]);
+  }
+
+  function handleQuitarArchivoNuevo(index) {
+    setArchivosNuevos(prev => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    setErrorForm(null);
-
     if (!datos.afiliado_id) {
       setErrorForm('Debes seleccionar un afiliado');
       return;
     }
-
     setGuardando(true);
-
-    const payload = {
-      ...datos,
-      resolucion: datos.resolucion?.trim() || null,
-      fecha_cierre: datos.estado === 'resuelta' ? new Date().toISOString() : null,
-    };
+    setErrorForm(null);
 
     let respuesta;
     if (esEdicion) {
-      respuesta = await supabase.from('incidencias').update(payload).eq('id', id);
+      respuesta = await supabase.from('incidencias').update(datos).eq('id', id);
     } else {
-      respuesta = await supabase.from('incidencias').insert(payload);
+      respuesta = await supabase.from('incidencias').insert(datos).select().single();
     }
-
-    setGuardando(false);
 
     if (respuesta.error) {
       setErrorForm(respuesta.error.message);
-      notificarError(respuesta.error.message);
-    } else {
-      exito(esEdicion ? 'Incidencia actualizada correctamente' : 'Incidencia creada correctamente');
-      navigate('/incidencias');
+      setGuardando(false);
+      return;
     }
+
+    // Si estamos creando una nueva incidencia y el usuario seleccionó archivos provisionales
+    if (!esEdicion && archivosNuevos.length > 0) {
+      const nuevoId = respuesta.data.id;
+
+      for (const archivo of archivosNuevos) {
+        try {
+          const extension = archivo.name.split('.').pop();
+          const rutaStorage = `incidencia-${nuevoId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+
+          const { error: errSubida } = await supabase.storage
+              .from('incidencias-adjuntos')
+              .upload(rutaStorage, archivo);
+
+          if (errSubida) throw errSubida;
+
+          await supabase.from('archivos_adjuntos').insert({
+            incidencia_id:   nuevoId,
+            nombre_original: archivo.name,
+            ruta_storage:    rutaStorage,
+            tipo_mime:       archivo.type || null,
+            tamano_bytes:    archivo.size,
+            subido_por:      profile?.id ?? null,
+          });
+        } catch (err) {
+          console.error("Error al procesar el archivo adjunto:", err);
+        }
+      }
+    }
+
+    setGuardando(false);
+    exito('Guardado correctamente');
+    navigate('/incidencias');
   }
 
-  if (cargando) {
-    return (
-      <Box sx={{ p: 6, textAlign: 'center' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  const afiliadoSeleccionado = afiliados.find((a) => a.id === datos.afiliado_id) ?? null;
+  if (cargando) return <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', p: 6, textAlign: 'center' }}><CircularProgress /></Box>;
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Button startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/incidencias')} sx={{ mb: 2 }}>
-        Volver al listado
-      </Button>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', px: 2, py: 4 }}>
+        <Box sx={{ maxWidth: '900px', mx: 'auto' }}>
+          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/incidencias')} sx={{ mb: 3, color: '#94a3b8' }}>
+            Volver al listado
+          </Button>
 
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, border: 1, borderColor: 'divider' }}>
-        <Typography variant="h4" fontWeight={600} gutterBottom>
-          {esEdicion ? 'Editar incidencia' : 'Nueva incidencia'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={3}>
-          {esEdicion
-            ? 'Modifica los datos y guarda los cambios.'
-            : 'Registra una nueva consulta, queja o problema laboral.'}
-        </Typography>
+          <Typography variant="h4" fontWeight={600} sx={{ color: '#fff' }}>
+            {esEdicion ? 'Editar incidencia' : 'Nueva incidencia'}
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#94a3b8', mt: 1, mb: 4 }}>
+            {esEdicion ? 'Modifica los datos y gestiona tus archivos.' : 'Completa el formulario para registrar la incidencia.'}
+          </Typography>
 
-        <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ borderColor: '#1e293b', mb: 4 }} />
 
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={3}>
-            {errorForm && <Alert severity="error">{errorForm}</Alert>}
+          <form onSubmit={handleSubmit}>
+            <Stack spacing={3}>
+              {errorForm && <Alert severity="error">{errorForm}</Alert>}
 
-            <Autocomplete
-              options={afiliados}
-              value={afiliadoSeleccionado}
-              onChange={(_e, val) => actualizar('afiliado_id', val?.id ?? '')}
-              getOptionLabel={(a) => a ? `${a.apellidos}, ${a.nombre} (${a.dni})` : ''}
-              renderOption={(props, a) => (
-                <Box component="li" {...props}>
-                  <Box>
-                    <Typography variant="body2">
-                      {a.apellidos}, {a.nombre}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {a.dni} · {a.sector?.nombre ?? '—'}
-                    </Typography>
+              {esEdicion ? (
+                  <TextField label="Afiliado afectado" value={nombreAfiliado} disabled fullWidth sx={inputStyle} />
+              ) : (
+                  <TextField select label="Seleccionar Afiliado" required fullWidth sx={inputStyle}
+                             value={datos.afiliado_id} onChange={(e) => actualizar('afiliado_id', e.target.value)}>
+                    {afiliados.map((a) => <MenuItem key={a.id} value={a.id}>{a.apellidos}, {a.nombre}</MenuItem>)}
+                  </TextField>
+              )}
+
+              <TextField label="Título" sx={inputStyle} value={datos.titulo}
+                         onChange={(e) => actualizar('titulo', e.target.value)} required fullWidth />
+
+              <TextField label="Descripción" sx={inputStyle} value={datos.descripcion}
+                         onChange={(e) => actualizar('descripcion', e.target.value)} required fullWidth multiline rows={4} />
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField select label="Estado" sx={inputStyle} value={datos.estado}
+                             onChange={(e) => actualizar('estado', e.target.value)} fullWidth>
+                    <MenuItem value="pendiente">Pendiente</MenuItem>
+                    <MenuItem value="en_proceso">En proceso</MenuItem>
+                    <MenuItem value="resuelta">Resuelta</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField select label="Prioridad" sx={inputStyle} value={datos.prioridad}
+                             onChange={(e) => actualizar('prioridad', e.target.value)} fullWidth>
+                    <MenuItem value="baja">Baja</MenuItem>
+                    <MenuItem value="media">Media</MenuItem>
+                    <MenuItem value="alta">Alta</MenuItem>
+                  </TextField>
+                </Grid>
+              </Grid>
+
+              <TextField label="Resolución / observaciones" sx={inputStyle} value={datos.resolucion}
+                         onChange={(e) => actualizar('resolucion', e.target.value)} fullWidth multiline rows={3} />
+
+              {/* SECCIÓN DE ADJUNTOS DE ACUERDO AL MODO (CREACIÓN O EDICIÓN) */}
+              {esEdicion ? (
+                  <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid #1e293b' }}>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>Archivos Adjuntos</Typography>
+                    <AdjuntosIncidencia incidenciaId={id} />
                   </Box>
-                </Box>
+              ) : (
+                  <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid #1e293b' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                      <Box>
+                        <Typography variant="h6" sx={{ color: '#fff' }}>Archivos Adjuntos</Typography>
+                        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                          {archivosNuevos.length} archivo(s) seleccionados provisionalmente
+                        </Typography>
+                      </Box>
+                      <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => inputFileRef.current?.click()} size="small">
+                        Seleccionar archivo
+                      </Button>
+                      <input ref={inputFileRef} type="file" hidden multiple onChange={handleSeleccionarArchivosNuevos} />
+                    </Stack>
+
+                    <Stack spacing={1}>
+                      {archivosNuevos.map((archivo, index) => (
+                          <Paper key={index} variant="outlined" sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'rgba(255,255,255,0.03)', borderColor: '#1e293b' }}>
+                            <Typography variant="body2" sx={{ color: '#fff', flex: 1 }} noWrap>{archivo.name}</Typography>
+                            <Typography variant="caption" sx={{ color: '#94a3b8' }}>{(archivo.size / 1024).toFixed(1)} KB</Typography>
+                            <IconButton size="small" color="error" onClick={() => handleQuitarArchivoNuevo(index)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
               )}
-              renderInput={(params) => (
-                <TextField {...params} label="Afiliado afectado" required
-                  helperText={
-                    afiliados.length === 0
-                      ? 'No hay afiliados activos. Crea uno antes desde la sección Afiliados.'
-                      : 'Busca por nombre, apellido o DNI'
-                  }
-                />
-              )}
-              isOptionEqualToValue={(opt, val) => opt.id === val?.id}
-            />
 
-            <TextField label="Título"
-              value={datos.titulo}
-              onChange={(e) => actualizar('titulo', e.target.value)}
-              required fullWidth
-              placeholder="Ej.: Consulta sobre horas extras"
-            />
-
-            <TextField label="Descripción"
-              value={datos.descripcion}
-              onChange={(e) => actualizar('descripcion', e.target.value)}
-              required fullWidth multiline rows={4}
-              placeholder="Detalla el problema, consulta o queja del afiliado"
-            />
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField select label="Estado"
-                  value={datos.estado}
-                  onChange={(e) => actualizar('estado', e.target.value)}
-                  fullWidth>
-                  <MenuItem value="pendiente">Pendiente</MenuItem>
-                  <MenuItem value="en_proceso">En proceso</MenuItem>
-                  <MenuItem value="resuelta">Resuelta</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField select label="Prioridad"
-                  value={datos.prioridad}
-                  onChange={(e) => actualizar('prioridad', e.target.value)}
-                  fullWidth>
-                  <MenuItem value="baja">Baja</MenuItem>
-                  <MenuItem value="media">Media</MenuItem>
-                  <MenuItem value="alta">Alta</MenuItem>
-                </TextField>
-              </Grid>
-            </Grid>
-
-            <TextField label="Resolución / observaciones"
-              value={datos.resolucion}
-              onChange={(e) => actualizar('resolucion', e.target.value)}
-              fullWidth multiline rows={3}
-              helperText="Cómo se ha resuelto o qué se ha hecho hasta ahora (opcional)"
-            />
-
-            <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
-              <Button onClick={() => navigate('/incidencias')} disabled={guardando}>
-                Cancelar
-              </Button>
-              <Button type="submit" variant="contained" startIcon={<SaveIcon />}
-                disabled={guardando}>
-                {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear incidencia'}
-              </Button>
+              <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
+                <Button onClick={() => navigate('/incidencias')} sx={{ color: '#94a3b8' }}>Cancelar</Button>
+                <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={guardando}>
+                  {guardando ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        </form>
-      </Paper>
-    </Container>
+          </form>
+        </Box>
+      </Box>
   );
 }

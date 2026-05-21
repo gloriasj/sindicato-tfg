@@ -105,8 +105,8 @@ export default function App() {
 
                   <Route path="/incidencias"             element={<Incidencias />} />
                   <Route path="/incidencias/nuevo"       element={<IncidenciaForm />} />
-                  <Route path="/incidencias/:id"         element={<IncidenciaForm />} />
-                  <Route path="/incidencias/:id/detalle" element={<IncidenciaDetalle />} />
+                  <Route path="/incidencias/:id"         element={<IncidenciaDetalle />} />      {/* <-- AHORA VA A DETALLE */}
+                  <Route path="/incidencias/:id/editar"  element={<IncidenciaForm />} />
 
                   <Route element={<AdminRoute />}>
                     <Route path="/sectores" element={<Sectores />} />

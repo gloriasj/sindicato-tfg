@@ -9,12 +9,30 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, TextField, MenuItem,
-  Stack, Paper, Grid, Alert, FormControlLabel, Switch,
+  Stack, Grid, Alert, FormControlLabel, Switch,
   CircularProgress, Divider,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
+
+// --- ESTILOS VISUALES PARA LOS INPUTS ---
+const inputStyle = {
+  '& .MuiInputLabel-root': { color: '#94a3b8' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
+  '& .MuiOutlinedInput-root': {
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    '& fieldset': { borderColor: '#1e293b' },
+    '&:hover fieldset': { borderColor: '#475569' },
+    '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
+  },
+  '& .MuiSelect-select': { color: '#fff' },
+  '& .MuiSvgIcon-root': { color: '#94a3b8' },
+  '& .MuiInputBase-input::placeholder': { color: '#94a3b8', opacity: 0.7 },
+  '& .MuiFormHelperText-root': { color: '#94a3b8' },
+};
+// ----------------------------------------
 
 const ESTADO_INICIAL = {
   dni: '', nombre: '', apellidos: '', email: '', telefono: '',
@@ -39,9 +57,9 @@ export default function AfiliadoForm() {
     setErrorForm(null);
 
     const { data: sects, error: errSect } = await supabase
-      .from('sectores')
-      .select('*')
-      .order('nombre');
+        .from('sectores')
+        .select('*')
+        .order('nombre');
 
     if (errSect) {
       setErrorForm('No se pudieron cargar los sectores: ' + errSect.message);
@@ -51,10 +69,10 @@ export default function AfiliadoForm() {
 
     if (esEdicion) {
       const { data, error } = await supabase
-        .from('afiliados')
-        .select('*')
-        .eq('id', id)
-        .single();
+          .from('afiliados')
+          .select('*')
+          .eq('id', id)
+          .single();
 
       if (error) {
         setErrorForm('Afiliado no encontrado: ' + error.message);
@@ -123,139 +141,168 @@ export default function AfiliadoForm() {
 
   if (cargando) {
     return (
-      <Box sx={{ p: 6, textAlign: 'center' }}>
-        <CircularProgress />
-      </Box>
+        <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', p: 6, textAlign: 'center' }}>
+          <CircularProgress />
+        </Box>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/afiliados')}
-        sx={{ mb: 2 }}
-      >
-        Volver al listado
-      </Button>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', py: 4 }}>
+        <Container maxWidth="md">
+          <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate('/afiliados')}
+              sx={{ mb: 4, color: '#94a3b8', '&:hover': { color: '#fff' } }}
+          >
+            Volver al listado
+          </Button>
 
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, border: 1, borderColor: 'divider' }}>
-        <Typography variant="h4" fontWeight={600} gutterBottom>
-          {esEdicion ? 'Editar afiliado' : 'Nuevo afiliado'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={3}>
-          {esEdicion
-            ? 'Modifica los datos del afiliado y guarda los cambios.'
-            : 'Rellena los datos para registrar un nuevo afiliado.'}
-        </Typography>
-
-        <Divider sx={{ mb: 3 }} />
-
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={3}>
-            {errorForm && <Alert severity="error">{errorForm}</Alert>}
-
-            <Typography variant="overline" color="text.secondary">
-              Datos personales
+          {/* CONTENEDOR PLANO EN LUGAR DE PAPER (TARJETA) */}
+          <Box sx={{ pb: 4 }}>
+            <Typography variant="h4" fontWeight={700} sx={{ color: '#fff', mb: 1 }}>
+              {esEdicion ? 'Editar afiliado' : 'Nuevo afiliado'}
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#94a3b8', mb: 4 }}>
+              {esEdicion
+                  ? 'Modifica los datos del afiliado y guarda los cambios.'
+                  : 'Rellena los datos para registrar un nuevo afiliado.'}
             </Typography>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="DNI"
-                  value={datos.dni}
-                  onChange={(e) => actualizar('dni', e.target.value.toUpperCase())}
-                  required fullWidth
-                  inputProps={{ maxLength: 9 }}
-                  placeholder="12345678A"
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField label="Nombre"
-                  value={datos.nombre}
-                  onChange={(e) => actualizar('nombre', e.target.value)}
-                  required fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField label="Apellidos"
-                  value={datos.apellidos}
-                  onChange={(e) => actualizar('apellidos', e.target.value)}
-                  required fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Email" type="email"
-                  value={datos.email}
-                  onChange={(e) => actualizar('email', e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Teléfono"
-                  value={datos.telefono}
-                  onChange={(e) => actualizar('telefono', e.target.value)}
-                  fullWidth placeholder="600 000 000"
-                />
-              </Grid>
-            </Grid>
+            <Divider sx={{ borderColor: '#1e293b', mb: 5 }} />
 
-            <Typography variant="overline" color="text.secondary">
-              Datos laborales
-            </Typography>
+            <form onSubmit={handleSubmit}>
+              <Stack spacing={4}>
+                {errorForm && <Alert severity="error">{errorForm}</Alert>}
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField select label="Sector"
-                  value={datos.sector_id}
-                  onChange={(e) => actualizar('sector_id', e.target.value)}
-                  required fullWidth
-                >
-                  <MenuItem value="" disabled>Selecciona un sector</MenuItem>
-                  {sectores.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Empresa"
-                  value={datos.empresa}
-                  onChange={(e) => actualizar('empresa', e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-            </Grid>
+                {/* DATOS PERSONALES */}
+                <Box>
+                  <Typography variant="overline" sx={{ color: '#3b82f6', fontWeight: 600, display: 'block', mb: 2 }}>
+                    Datos personales
+                  </Typography>
 
-            <TextField label="Notas internas"
-              value={datos.notas}
-              onChange={(e) => actualizar('notas', e.target.value)}
-              fullWidth multiline rows={3}
-              helperText="Información interna no visible para el afiliado"
-            />
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                          label="DNI"
+                          value={datos.dni}
+                          onChange={(e) => actualizar('dni', e.target.value.toUpperCase())}
+                          required fullWidth
+                          inputProps={{ maxLength: 9 }}
+                          placeholder="12345678A"
+                          sx={inputStyle}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField label="Nombre"
+                                 value={datos.nombre}
+                                 onChange={(e) => actualizar('nombre', e.target.value)}
+                                 required fullWidth
+                                 sx={inputStyle}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField label="Apellidos"
+                                 value={datos.apellidos}
+                                 onChange={(e) => actualizar('apellidos', e.target.value)}
+                                 required fullWidth
+                                 sx={inputStyle}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField label="Email" type="email"
+                                 value={datos.email}
+                                 onChange={(e) => actualizar('email', e.target.value)}
+                                 fullWidth
+                                 sx={inputStyle}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField label="Teléfono"
+                                 value={datos.telefono}
+                                 onChange={(e) => actualizar('telefono', e.target.value)}
+                                 fullWidth placeholder="600 000 000"
+                                 sx={inputStyle}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
 
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={datos.activo}
-                  onChange={(e) => actualizar('activo', e.target.checked)}
-                />
-              }
-              label={datos.activo ? 'Afiliación activa' : 'Afiliación inactiva'}
-            />
+                <Divider sx={{ borderColor: '#1e293b' }} />
 
-            <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
-              <Button onClick={() => navigate('/afiliados')} disabled={guardando}>
-                Cancelar
-              </Button>
-              <Button type="submit" variant="contained" startIcon={<SaveIcon />}
-                disabled={guardando}>
-                {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear afiliado'}
-              </Button>
-            </Stack>
-          </Stack>
-        </form>
-      </Paper>
-    </Container>
+                {/* DATOS LABORALES */}
+                <Box>
+                  <Typography variant="overline" sx={{ color: '#3b82f6', fontWeight: 600, display: 'block', mb: 2 }}>
+                    Datos laborales
+                  </Typography>
+
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField select label="Sector"
+                                 value={datos.sector_id}
+                                 onChange={(e) => actualizar('sector_id', e.target.value)}
+                                 required fullWidth
+                                 sx={inputStyle}
+                      >
+                        <MenuItem value="" disabled>Selecciona un sector</MenuItem>
+                        {sectores.map((s) => (
+                            <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField label="Empresa"
+                                 value={datos.empresa}
+                                 onChange={(e) => actualizar('empresa', e.target.value)}
+                                 fullWidth
+                                 sx={inputStyle}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider sx={{ borderColor: '#1e293b' }} />
+
+                {/* NOTAS Y ESTADO */}
+                <Box>
+                  <TextField label="Notas internas"
+                             value={datos.notas}
+                             onChange={(e) => actualizar('notas', e.target.value)}
+                             fullWidth multiline rows={3}
+                             helperText="Información interna no visible para el afiliado"
+                             sx={{ ...inputStyle, mb: 3 }}
+                  />
+
+                  <FormControlLabel
+                      control={
+                        <Switch
+                            checked={datos.activo}
+                            onChange={(e) => actualizar('activo', e.target.checked)}
+                            color="primary"
+                        />
+                      }
+                      label={
+                        <Typography sx={{ color: datos.activo ? '#fff' : '#94a3b8' }}>
+                          {datos.activo ? 'Afiliación activa' : 'Afiliación inactiva'}
+                        </Typography>
+                      }
+                  />
+                </Box>
+
+                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={3} borderTop="1px solid #1e293b" mt={4}>
+                  <Button onClick={() => navigate('/afiliados')} disabled={guardando} sx={{ color: '#94a3b8' }}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={guardando}>
+                    {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear afiliado'}
+                  </Button>
+                </Stack>
+
+              </Stack>
+            </form>
+          </Box>
+        </Container>
+      </Box>
   );
 }
 
