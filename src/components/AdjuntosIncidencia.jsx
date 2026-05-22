@@ -73,7 +73,8 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
           `incidencia-${incidenciaId}/${Date.now()}-${Math.random()
               .toString(36)
               .slice(2, 8)}.${extension}`;
-
+      //PROCESO DE SUBIDA;
+      //1 Se guarda el archivo en el almacen fisico (bucket)
       const { error: errSubida } = await supabase.storage
           .from(BUCKET)
           .upload(rutaStorage, archivo, {
@@ -82,7 +83,7 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
           });
 
       if (errSubida) throw errSubida;
-
+      //2 se anota los detalles en el catalogo en bd
       const { data, error: errInsert } = await supabase
           .from('archivos_adjuntos')
           .insert({
@@ -95,7 +96,7 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
           })
           .select()
           .single();
-
+      //3 red de seguridad, si falla la base de datos se saca esos archivos
       if (errInsert) {
         await supabase.storage.from(BUCKET).remove([rutaStorage]);
         throw errInsert;
