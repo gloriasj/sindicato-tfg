@@ -57,6 +57,74 @@ const dialogPaperStyle = {
 const tableHeadStyle = { color: '#94a3b8', borderBottom: '1px solid #1e293b', fontWeight: 600, bgcolor: 'rgba(0,0,0,0.2)' };
 const tableCellStyle = { color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)' };
 
+function ModalNuevoUsuario({ abierto, onCerrar, onUsuarioCreado }) {
+    const { exito, error: notificarError } = useNotificacion();
+    const [nuevoNombre, setNuevoNombre] = useState('');
+    const [nuevoApellido, setNuevoApellido] = useState('');
+    const [nuevoEmailForm, setNuevoEmailForm] = useState('');
+    const [nuevoPassword, setNuevoPassword] = useState('');
+    const [creandoUsuario, setCreandoUsuario] = useState(false);
+
+    async function handleCrearUsuario(e) {
+        e.preventDefault();
+        setCreandoUsuario(true);
+        try {
+            const { data: authData, error: authError } = await supabaseCrearUsuarios.auth.signUp({
+                email: nuevoEmailForm,
+                password: nuevoPassword,
+                options: { data: { nombre: nuevoNombre, apellidos: nuevoApellido, rol: 'delegado' } }
+            });
+            if (authError) throw authError;
+            if (authData?.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: authData.user.id,
+                        nombre: nuevoNombre,
+                        apellidos: nuevoApellido,
+                        email: nuevoEmailForm,
+                        rol: 'delegado',
+                        activo: true
+                    });
+                if (profileError) throw profileError;
+            }
+            exito(`Usuario "${nuevoNombre}" registrado correctamente.`);
+            setNuevoNombre('');
+            setNuevoApellido('');
+            setNuevoEmailForm('');
+            setNuevoPassword('');
+            onCerrar();
+            onUsuarioCreado();
+        } catch (err) {
+            notificarError('Error al registrar: ' + err.message);
+        } finally {
+            setCreandoUsuario(false);
+        }
+    }
+
+    return (
+        <Dialog open={abierto} onClose={() => !creandoUsuario && onCerrar()} PaperProps={{ sx: dialogPaperStyle }} maxWidth="xs" fullWidth>
+            <form onSubmit={handleCrearUsuario}>
+                <DialogTitle sx={{ fontWeight: 600 }}>Registrar Nuevo Delegado</DialogTitle>
+                <DialogContent dividers sx={{ borderColor: '#1e293b' }}>
+                    <Stack spacing={2} sx={{ pt: 1 }}>
+                        <TextField label="Nombre" required fullWidth value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} sx={inputStyle} />
+                        <TextField label="Apellidos" required fullWidth value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} sx={inputStyle} />
+                        <TextField label="Email" type="email" required fullWidth value={nuevoEmailForm} onChange={(e) => setNuevoEmailForm(e.target.value)} sx={inputStyle} />
+                        <TextField label="Contraseña Temporal" type="password" required fullWidth value={nuevoPassword} onChange={(e) => setNuevoPassword(e.target.value)} sx={inputStyle} helperText="Mínimo 6 caracteres" slotProps={{ formHelperText: { sx: { color: '#64748b' } } }} />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
+                    <Button onClick={onCerrar} disabled={creandoUsuario} sx={{ color: '#94a3b8' }}>Cancelar</Button>
+                    <Button type="submit" variant="contained" disabled={creandoUsuario}>
+                        {creandoUsuario ? 'Registrando...' : 'Registrar'}
+                    </Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    );
+}
+
 export default function Usuarios() {
     const { exito, error: notificarError } = useNotificacion();
 
@@ -66,11 +134,6 @@ export default function Usuarios() {
 
     // Estados para crear nuevo usuario
     const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
-    const [nuevoNombre, setNuevoNombre] = useState('');
-    const [nuevoApellido, setNuevoApellido] = useState('');
-    const [nuevoEmailForm, setNuevoEmailForm] = useState('');
-    const [nuevoPassword, setNuevoPassword] = useState('');
-    const [creandoUsuario, setCreandoUsuario] = useState(false);
 
     // Estados para editar nombre/apellidos
     const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
@@ -161,58 +224,6 @@ export default function Usuarios() {
             );
             exito('Datos de usuario actualizados correctamente');
             setModalEditarAbierto(false);
-        }
-    }
-
-    // --- CREACIÓN DE USUARIOS CON EL CLON INVISIBLE ---
-    async function handleCrearUsuario(e) {
-        e.preventDefault();
-        setCreandoUsuario(true);
-
-        try {
-            const { data: authData, error: authError } = await supabaseCrearUsuarios.auth.signUp({
-                email: nuevoEmailForm,
-                password: nuevoPassword,
-                options: {
-                    data: {
-                        nombre: nuevoNombre,
-                        apellidos: nuevoApellido,
-                        rol: 'delegado'
-                    }
-                }
-            });
-
-            if (authError) throw authError;
-
-            if (authData?.user) {
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert({
-                        id: authData.user.id,
-                        nombre: nuevoNombre,
-                        apellidos: nuevoApellido,
-                        email: nuevoEmailForm,
-                        rol: 'delegado',
-                        activo: true
-                    });
-
-                if (profileError) throw profileError;
-            }
-
-            exito(`Usuario "${nuevoNombre}" registrado correctamente.`);
-            setModalNuevoAbierto(false);
-
-            setNuevoNombre('');
-            setNuevoApellido('');
-            setNuevoEmailForm('');
-            setNuevoPassword('');
-
-            cargarUsuarios();
-
-        } catch (err) {
-            notificarError('Error al registrar: ' + err.message);
-        } finally {
-            setCreandoUsuario(false);
         }
     }
 
@@ -327,59 +338,11 @@ export default function Usuarios() {
                 </Paper>
 
                 {/* --- MODAL PARA CREAR NUEVO USUARIO --- */}
-                <Dialog open={modalNuevoAbierto} onClose={() => !creandoUsuario && setModalNuevoAbierto(false)} PaperProps={{ sx: dialogPaperStyle }} maxWidth="xs" fullWidth>
-                    <form onSubmit={handleCrearUsuario}>
-                        <DialogTitle sx={{ fontWeight: 600 }}>Registrar Nuevo Delegado</DialogTitle>
-                        <DialogContent dividers sx={{ borderColor: '#1e293b' }}>
-                            <Stack spacing={2} sx={{ pt: 1 }}>
-                                <TextField
-                                    label="Nombre"
-                                    required
-                                    fullWidth
-                                    value={nuevoNombre}
-                                    onChange={(e) => setNuevoNombre(e.target.value)}
-                                    sx={inputStyle}
-                                />
-                                <TextField
-                                    label="Apellidos"
-                                    required
-                                    fullWidth
-                                    value={nuevoApellido}
-                                    onChange={(e) => setNuevoApellido(e.target.value)}
-                                    sx={inputStyle}
-                                />
-                                <TextField
-                                    label="Email"
-                                    type="email"
-                                    required
-                                    fullWidth
-                                    value={nuevoEmailForm}
-                                    onChange={(e) => setNuevoEmailForm(e.target.value)}
-                                    sx={inputStyle}
-                                />
-                                <TextField
-                                    label="Contraseña Temporal"
-                                    type="password"
-                                    required
-                                    fullWidth
-                                    value={nuevoPassword}
-                                    onChange={(e) => setNuevoPassword(e.target.value)}
-                                    sx={inputStyle}
-                                    helperText="Mínimo 6 caracteres"
-                                    slotProps={{ formHelperText: { sx: { color: '#64748b' } } }}
-                                />
-                            </Stack>
-                        </DialogContent>
-                        <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
-                            <Button onClick={() => setModalNuevoAbierto(false)} disabled={creandoUsuario} sx={{ color: '#94a3b8' }}>
-                                Cancelar
-                            </Button>
-                            <Button type="submit" variant="contained" disabled={creandoUsuario}>
-                                {creandoUsuario ? 'Registrando...' : 'Registrar'}
-                            </Button>
-                        </DialogActions>
-                    </form>
-                </Dialog>
+                <ModalNuevoUsuario
+                    abierto={modalNuevoAbierto}
+                    onCerrar={() => setModalNuevoAbierto(false)}
+                    onUsuarioCreado={cargarUsuarios}
+                />
 
                 {/* --- MODAL PARA EDITAR NOMBRE/APELLIDOS --- */}
                 <Dialog open={modalEditarAbierto} onClose={() => !guardandoEditar && setModalEditarAbierto(false)} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperStyle }}>
