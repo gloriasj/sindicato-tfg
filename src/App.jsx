@@ -17,7 +17,6 @@ import Layout         from './components/Layout';
 
 // Páginas
 import Login              from './pages/Login';
-import Register           from './pages/Register';
 import RecuperarPassword  from './pages/RecuperarPassword';
 import ResetPassword      from './pages/ResetPassword';
 import Dashboard          from './pages/Dashboard';
