@@ -19,7 +19,6 @@ import {
     PeopleOutlined as PeopleIcon,
     GridViewOutlined as CategoryIcon,
     PersonOutlineOutlined as AdminIcon,
-    SettingsOutlined as SettingsIcon,
     LogoutOutlined as LogoutIcon,
 } from '@mui/icons-material';
 
@@ -147,32 +146,9 @@ export default function Layout() {
                 })}
             </List>
 
-            {/* === Acciones del footer (Ajustes y Cerrar sesión) === */}
+            {/* === Acciones del footer (Cerrar sesión) === */}
             <Box sx={{ px: 2 }}>
                 <List disablePadding>
-                    <ListItem disablePadding sx={{ mb: 0.5 }}>
-                        <ListItemButton
-                            sx={{
-                                borderRadius: '10px',
-                                color: '#94a3b8',
-                                py: 1.2,
-                                px: 2.5,
-                                '& .MuiListItemIcon-root': { color: '#94a3b8', minWidth: 40 },
-                                '&:hover': {
-                                    bgcolor: 'rgba(255, 255, 255, 0.05)',
-                                    color: '#ffffff',
-                                    '& .MuiListItemIcon-root': { color: '#ffffff' }
-                                },
-                            }}
-                        >
-                            <ListItemIcon><SettingsIcon /></ListItemIcon>
-                            <ListItemText
-                                primary="Ajustes"
-                                primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }}
-                            />
-                        </ListItemButton>
-                    </ListItem>
-
                     <ListItem disablePadding>
                         <ListItemButton
                             onClick={() => setConfirmarLogout(true)}

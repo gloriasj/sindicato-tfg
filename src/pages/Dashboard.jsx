@@ -8,6 +8,7 @@
 //   sparkline prominente
 // - Gráficos con mejor proporción y espaciado
 // - Mejor jerarquía visual entre secciones
+// - Doble tabla inferior (Últimas y Resueltas)
 // -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
@@ -18,7 +19,6 @@ import {
 } from '@mui/material';
 import {
     Assignment, LocalFireDepartment, CheckCircle, People, Schedule,
-    TrendingUp, TrendingDown,
 } from '@mui/icons-material';
 import {
     ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
@@ -219,7 +219,15 @@ export default function Dashboard() {
         },
     ];
 
+    // Listas de incidencias para las tablas inferiores
     const ultimas = incidencias.slice(0, 5);
+
+    const ultimasResueltas = useMemo(() => {
+        return incidencias
+            .filter(i => i.estado === 'resuelta')
+            .sort((a, b) => new Date(b.fecha_cierre || b.created_at) - new Date(a.fecha_cierre || a.created_at))
+            .slice(0, 5);
+    }, [incidencias]);
 
     // =========================================================
     // RENDER
@@ -551,105 +559,192 @@ export default function Dashboard() {
             {/* Espacio extra entre los gráficos y la tabla */}
             <Box sx={{ height: { xs: 16, md: 32 } }} />
 
-            {/* === Fila 3: tabla de últimas incidencias === */}
-            <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
-                <Box sx={{
-                    px: 3.5, py: 2.5,
-                    borderBottom: '1px solid #1e293b',
-                }}>
-                    <Typography fontWeight={700} sx={{
-                        color: '#fff', fontSize: '1.05rem',
+            {/* === Fila 3: Grid de tablas (Últimas creadas y Últimas resueltas) === */}
+            <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+                gap: 3,
+            }}>
+                {/* TABLA 1: ÚLTIMAS INCIDENCIAS GENERALES */}
+                <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
+                    <Box sx={{
+                        px: 3.5, py: 2.5,
+                        borderBottom: '1px solid #1e293b',
                     }}>
-                        Últimas incidencias
-                    </Typography>
-                    <Typography sx={{
-                        color: '#64748b', fontSize: '0.75rem', mt: 0.3,
-                    }}>
-                        Las {ultimas.length} más recientes
-                    </Typography>
-                </Box>
-
-                {ultimas.length === 0 ? (
-                    <Box sx={{ p: 6, textAlign: 'center' }}>
-                        <Typography sx={{ color: '#64748b' }}>
-                            Todavía no hay incidencias registradas.
+                        <Typography fontWeight={700} sx={{
+                            color: '#fff', fontSize: '1.05rem',
+                        }}>
+                            Últimas incidencias registradas
+                        </Typography>
+                        <Typography sx={{
+                            color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                        }}>
+                            Las {ultimas.length} más recientes del sistema
                         </Typography>
                     </Box>
-                ) : (
-                    <TableContainer sx={{ overflowX: 'auto' }}>
-                        <Table size="small" sx={{ minWidth: 800 }}>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ ...tableHeader, pl: 3.5 }}>ID</TableCell>
-                                    <TableCell sx={tableHeader}>Título</TableCell>
-                                    <TableCell sx={tableHeader}>Afiliado</TableCell>
-                                    <TableCell sx={tableHeader}>Sector</TableCell>
-                                    <TableCell sx={tableHeader}>Prioridad</TableCell>
-                                    <TableCell sx={tableHeader}>Estado</TableCell>
-                                    <TableCell sx={{ ...tableHeader, pr: 3.5 }}>Fecha</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {ultimas.map((i) => (
-                                    <TableRow
-                                        key={i.id}
-                                        onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
-                                        sx={{
-                                            cursor: 'pointer',
-                                            '& td': {
-                                                borderBottom: '1px solid #1e293b',
-                                                py: 2,
-                                            },
-                                            '&:hover': { bgcolor: 'rgba(91,141,239,0.06)' },
-                                            '&:last-child td': { borderBottom: 0 },
-                                        }}
-                                    >
-                                        <TableCell sx={{
-                                            color: '#94a3b8', fontSize: '0.8rem',
-                                            fontFamily: 'monospace', pl: 3.5,
-                                        }}>
-                                            #INC-{String(i.id).padStart(4, '0')}
-                                        </TableCell>
-                                        <TableCell sx={{
-                                            color: '#fff', fontSize: '0.85rem',
-                                            fontWeight: 500, whiteSpace: 'nowrap',
-                                            maxWidth: 240, overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                        }}>
-                                            {i.titulo}
-                                        </TableCell>
-                                        <TableCell sx={{
-                                            color: '#cbd5e1', fontSize: '0.8rem',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {i.afiliado
-                                                ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}`
-                                                : '—'}
-                                        </TableCell>
-                                        <TableCell sx={{
-                                            color: '#94a3b8', fontSize: '0.8rem',
-                                        }}>
-                                            {i.afiliado?.sector?.nombre ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <ChipPrioridad prioridad={i.prioridad} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <ChipEstado estado={i.estado} />
-                                        </TableCell>
-                                        <TableCell sx={{
-                                            color: '#94a3b8', fontSize: '0.8rem',
-                                            whiteSpace: 'nowrap', pr: 3.5,
-                                        }}>
-                                            {new Date(i.created_at).toLocaleDateString('es-ES')}
-                                        </TableCell>
+
+                    {ultimas.length === 0 ? (
+                        <Box sx={{ p: 6, textAlign: 'center' }}>
+                            <Typography sx={{ color: '#64748b' }}>
+                                Todavía no hay incidencias registradas.
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer sx={{ overflowX: 'auto' }}>
+                            <Table size="small" sx={{ minWidth: 600 }}>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ ...tableHeader, pl: 3.5 }}>ID</TableCell>
+                                        <TableCell sx={tableHeader}>Título</TableCell>
+                                        <TableCell sx={tableHeader}>Afiliado</TableCell>
+                                        <TableCell sx={tableHeader}>Estado</TableCell>
+                                        <TableCell sx={{ ...tableHeader, pr: 3.5 }}>Fecha</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                )}
-            </Paper>
+                                </TableHead>
+                                <TableBody>
+                                    {ultimas.map((i) => (
+                                        <TableRow
+                                            key={i.id}
+                                            onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
+                                            sx={{
+                                                cursor: 'pointer',
+                                                '& td': {
+                                                    borderBottom: '1px solid #1e293b',
+                                                    py: 2,
+                                                },
+                                                '&:hover': { bgcolor: 'rgba(91,141,239,0.06)' },
+                                                '&:last-child td': { borderBottom: 0 },
+                                            }}
+                                        >
+                                            <TableCell sx={{
+                                                color: '#94a3b8', fontSize: '0.8rem',
+                                                fontFamily: 'monospace', pl: 3.5,
+                                            }}>
+                                                #INC-{String(i.id).padStart(4, '0')}
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#fff', fontSize: '0.85rem',
+                                                fontWeight: 500, whiteSpace: 'nowrap',
+                                                maxWidth: 200, overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}>
+                                                {i.titulo}
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#cbd5e1', fontSize: '0.8rem',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {i.afiliado
+                                                    ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}`
+                                                    : '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <ChipEstado estado={i.estado} />
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#94a3b8', fontSize: '0.8rem',
+                                                whiteSpace: 'nowrap', pr: 3.5,
+                                            }}>
+                                                {new Date(i.created_at).toLocaleDateString('es-ES')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </Paper>
+
+                {/* TABLA 2: ÚLTIMAS RESUELTAS */}
+                <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
+                    <Box sx={{
+                        px: 3.5, py: 2.5,
+                        borderBottom: '1px solid #1e293b',
+                    }}>
+                        <Typography fontWeight={700} sx={{
+                            color: '#fff', fontSize: '1.05rem',
+                        }}>
+                            Últimas incidencias resueltas
+                        </Typography>
+                        <Typography sx={{
+                            color: '#64748b', fontSize: '0.75rem', mt: 0.3,
+                        }}>
+                            Las {ultimasResueltas.length} completadas más recientemente
+                        </Typography>
+                    </Box>
+
+                    {ultimasResueltas.length === 0 ? (
+                        <Box sx={{ p: 6, textAlign: 'center' }}>
+                            <Typography sx={{ color: '#64748b' }}>
+                                Aún no se han resuelto incidencias.
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer sx={{ overflowX: 'auto' }}>
+                            <Table size="small" sx={{ minWidth: 600 }}>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ ...tableHeader, pl: 3.5 }}>ID</TableCell>
+                                        <TableCell sx={tableHeader}>Título</TableCell>
+                                        <TableCell sx={tableHeader}>Afiliado</TableCell>
+                                        <TableCell sx={tableHeader}>Prioridad</TableCell>
+                                        <TableCell sx={{ ...tableHeader, pr: 3.5 }}>Cierre</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {ultimasResueltas.map((i) => (
+                                        <TableRow
+                                            key={i.id}
+                                            onClick={() => navigate(`/incidencias/${i.id}/detalle`)}
+                                            sx={{
+                                                cursor: 'pointer',
+                                                '& td': {
+                                                    borderBottom: '1px solid #1e293b',
+                                                    py: 2,
+                                                },
+                                                '&:hover': { bgcolor: 'rgba(16,185,129,0.06)' }, // Hover verdoso
+                                                '&:last-child td': { borderBottom: 0 },
+                                            }}
+                                        >
+                                            <TableCell sx={{
+                                                color: '#94a3b8', fontSize: '0.8rem',
+                                                fontFamily: 'monospace', pl: 3.5,
+                                            }}>
+                                                #INC-{String(i.id).padStart(4, '0')}
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#fff', fontSize: '0.85rem',
+                                                fontWeight: 500, whiteSpace: 'nowrap',
+                                                maxWidth: 200, overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}>
+                                                {i.titulo}
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#cbd5e1', fontSize: '0.8rem',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {i.afiliado
+                                                    ? `${i.afiliado.apellidos}, ${i.afiliado.nombre}`
+                                                    : '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <ChipPrioridad prioridad={i.prioridad} />
+                                            </TableCell>
+                                            <TableCell sx={{
+                                                color: '#10b981', fontSize: '0.8rem',
+                                                whiteSpace: 'nowrap', pr: 3.5, fontWeight: 500
+                                            }}>
+                                                {new Date(i.fecha_cierre || i.created_at).toLocaleDateString('es-ES')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </Paper>
+            </Box>
         </Box>
     );
 }

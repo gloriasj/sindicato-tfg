@@ -1,6 +1,6 @@
 // src/pages/IncidenciaDetalle.jsx
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useParams, Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Paper, Grid,
   Chip, Avatar, Divider, Alert, CircularProgress, Tooltip, IconButton
@@ -43,7 +43,7 @@ export default function IncidenciaDetalle() {
   const { id } = useParams();
 
   const [incidencia, setIncidencia] = useState(null);
-  const [archivos, setArchivos]     = useState([]); // Estado para los archivos
+  const [archivos, setArchivos]     = useState([]);
   const [cargando, setCargando]     = useState(true);
   const [error, setError]           = useState(null);
 
@@ -53,7 +53,6 @@ export default function IncidenciaDetalle() {
     setCargando(true);
     setError(null);
 
-    // 1. Cargamos los datos de la incidencia y del afiliado
     const { data: dataIncidencia, error: errIncidencia } = await supabase
         .from('incidencias')
         .select(`
@@ -71,7 +70,6 @@ export default function IncidenciaDetalle() {
 
     setIncidencia(dataIncidencia);
 
-    // 2. Cargamos los archivos adjuntos directamente asociados a esta incidencia
     const { data: dataArchivos } = await supabase
         .from('archivos_adjuntos')
         .select('*')
@@ -82,7 +80,6 @@ export default function IncidenciaDetalle() {
     setCargando(false);
   }
 
-  // Función exclusiva para descargar el archivo mediante una URL firmada temporal
   async function handleDescargar(archivo) {
     try {
       const { data, error } = await supabase.storage
@@ -118,7 +115,6 @@ export default function IncidenciaDetalle() {
         </Stack>
 
         <Grid container spacing={3}>
-          {/* Columna Principal */}
           <Grid item xs={12} md={8}>
             <Paper sx={cardStyle}>
               <Stack direction="row" spacing={2} alignItems="center" mb={3}>
@@ -152,7 +148,6 @@ export default function IncidenciaDetalle() {
               )}
             </Paper>
 
-            {/* SECCIÓN DE CONSULTA DE ARCHIVOS (100% LECTURA Y DESCARGA) */}
             <Paper sx={{ p: 3, border: '1px solid #1e293b', bgcolor: '#131c33', borderRadius: 4 }}>
               <Stack direction="row" spacing={1.5} alignItems="center" mb={3}>
                 <AttachFileIcon sx={{ color: '#3b82f6' }} />
@@ -161,14 +156,14 @@ export default function IncidenciaDetalle() {
                     Documentación adjunta
                   </Typography>
                   <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                    {archivos.length} archivo(s) vinculados a la incidencia
+                    {archivos.length} archivo(s) vinculados
                   </Typography>
                 </Box>
               </Stack>
 
               {archivos.length === 0 ? (
                   <Alert severity="info" variant="outlined" sx={{ border: 'none', bgcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}>
-                    No se han adjuntado archivos en esta incidencia.
+                    No hay archivos adjuntos.
                   </Alert>
               ) : (
                   <Stack spacing={1.5}>
@@ -188,7 +183,6 @@ export default function IncidenciaDetalle() {
                             }}
                         >
                           {iconoTipo(archivo.tipo_mime)}
-
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={500} sx={{ color: '#fff' }} noWrap>
                               {archivo.nombre_original}
@@ -200,17 +194,11 @@ export default function IncidenciaDetalle() {
                                   variant="outlined"
                                   sx={{ height: 20, fontSize: '0.7rem', color: '#94a3b8', borderColor: '#475569' }}
                               />
-                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                                Subido el {new Date(archivo.subido_at).toLocaleString('es-ES')}
-                              </Typography>
                             </Stack>
                           </Box>
-
-                          <Tooltip title="Descargar archivo">
-                            <IconButton size="small" onClick={() => handleDescargar(archivo)} sx={{ color: '#fff' }}>
-                              <DownloadIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <IconButton size="small" onClick={() => handleDescargar(archivo)} sx={{ color: '#fff' }}>
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
                         </Paper>
                     ))}
                   </Stack>
@@ -218,7 +206,6 @@ export default function IncidenciaDetalle() {
             </Paper>
           </Grid>
 
-          {/* Columna Lateral */}
           <Grid item xs={12} md={4}>
             <Paper sx={cardStyle}>
               <Typography variant="overline" sx={{ color: '#94a3b8' }}>Afiliado afectado</Typography>
@@ -229,30 +216,19 @@ export default function IncidenciaDetalle() {
                   <Typography sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>{af?.dni}</Typography>
                 </Box>
               </Stack>
-              <Button fullWidth variant="outlined" size="small" sx={{ color: '#fff', borderColor: '#1e293b' }}
-                      component={RouterLink} to={`/afiliados/${af?.id}/detalle`}>
+              <Button
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={{ color: '#fff', borderColor: '#1e293b' }}
+                  onClick={() => {
+                    navigate(`/afiliados/${af?.id}/detalle`, {
+                      state: { fromIncidenciaId: id } // PASAMOS EL ESTADO CORRECTAMENTE
+                    });
+                  }}
+              >
                 Ver ficha completa
               </Button>
-            </Paper>
-
-            {/* Fechas */}
-            <Paper sx={cardStyle}>
-              <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-                <CalendarIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
-                <Typography variant="overline" sx={{ color: '#94a3b8', m: 0 }}>Fechas</Typography>
-              </Stack>
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>Apertura</Typography>
-                  <Typography sx={{ color: '#fff' }}>{new Date(incidencia.fecha_apertura).toLocaleString('es-ES')}</Typography>
-                </Box>
-                {incidencia.fecha_cierre && (
-                    <Box>
-                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>Cierre</Typography>
-                      <Typography sx={{ color: '#fff' }}>{new Date(incidencia.fecha_cierre).toLocaleString('es-ES')}</Typography>
-                    </Box>
-                )}
-              </Stack>
             </Paper>
           </Grid>
         </Grid>
@@ -260,19 +236,16 @@ export default function IncidenciaDetalle() {
   );
 }
 
-// === Funciones auxiliares locales para mantener el aislamiento visual ===
 function iconoTipo(mime) {
   const props = { sx: { color: '#94a3b8', fontSize: 28 } };
   if (!mime) return <FileIcon {...props} />;
   if (mime.startsWith('image/'))    return <ImageIcon {...props} sx={{ ...props.sx, color: '#3b82f6' }} />;
   if (mime === 'application/pdf')   return <PdfIcon   {...props} sx={{ ...props.sx, color: '#ef4444' }} />;
-  if (mime.includes('word') || mime.includes('document')) return <DescriptionIcon {...props} sx={{ ...props.sx, color: '#3b82f6' }} />;
   return <FileIcon {...props} />;
 }
 
 function formatearTamano(bytes) {
   if (!bytes) return '';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }

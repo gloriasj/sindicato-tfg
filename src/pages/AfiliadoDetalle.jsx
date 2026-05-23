@@ -5,7 +5,7 @@
 // -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useParams, Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   Box, Container, Typography, Button, Stack, Paper, Grid,
   Chip, Avatar, Divider, Alert, CircularProgress, IconButton,
@@ -55,6 +55,7 @@ const PRIORIDADES = {
 
 export default function AfiliadoDetalle() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { exito, error: notificarError } = useNotificacion();
   const { puedeGestionarAfiliados } = usePermisos();
@@ -154,13 +155,21 @@ export default function AfiliadoDetalle() {
         <Container maxWidth="lg">
           <Button
               startIcon={<ArrowBackIcon />}
-              onClick={() => navigate('/afiliados')}
+              onClick={() => {
+                const incidenciaOrigen = location.state?.fromIncidenciaId;
+
+                if (incidenciaOrigen) {
+
+                  navigate(`/incidencias/${incidenciaOrigen}`);
+                } else {
+                  navigate('/afiliados');
+                }
+              }}
               sx={{ mb: 3, color: '#94a3b8', '&:hover': { color: '#fff' } }}
           >
-            Volver al listado
+            Volver atrás
           </Button>
 
-          {/* CABECERA Y DATOS DEL AFILIADO */}
           <Paper sx={{ ...cardStyle, p: { xs: 3, sm: 4 }, mb: 5 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ sm: 'center' }}>
               <Avatar sx={{
@@ -188,7 +197,6 @@ export default function AfiliadoDetalle() {
                 </Typography>
               </Box>
 
-              {/* BOTÓN EXPORTAR PDF (Reemplaza al antiguo Editar) */}
               <Tooltip title="Descargar ficha completa en PDF">
                 <Button
                     variant="outlined"
@@ -231,7 +239,6 @@ export default function AfiliadoDetalle() {
               />
             </Grid>
 
-            {/* CAJA DE NOTAS INTERNAS (AHORA SIEMPRE VISIBLE) */}
             <Box sx={{ mt: 5, p: 3, bgcolor: 'rgba(0, 0, 0, 0.2)', borderRadius: 2, border: '1px solid #1e293b' }}>
               <Typography variant="overline" sx={{ color: '#3b82f6', fontWeight: 700, display: 'block', mb: 1 }}>
                 Notas internas
@@ -242,7 +249,6 @@ export default function AfiliadoDetalle() {
             </Box>
           </Paper>
 
-          {/* CONTADORES DE INCIDENCIAS */}
           <Grid container spacing={3} sx={{ mb: 5 }}>
             <TarjetaContador titulo="Total Histórico" valor={conteo.total}      color="#fff" />
             <TarjetaContador titulo="Pendientes" valor={conteo.pendiente}  color="#f59e0b" />
@@ -250,7 +256,6 @@ export default function AfiliadoDetalle() {
             <TarjetaContador titulo="Resueltas" valor={conteo.resuelta}    color="#10b981" />
           </Grid>
 
-          {/* TABLA DE INCIDENCIAS DEL AFILIADO */}
           <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
             <Stack
                 direction={{ xs: 'column', sm: 'row' }}
