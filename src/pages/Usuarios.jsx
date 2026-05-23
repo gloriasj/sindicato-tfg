@@ -78,7 +78,7 @@ function ModalNuevoUsuario({ abierto, onCerrar, onUsuarioCreado }) {
             if (authData?.user) {
                 const { error: profileError } = await supabase
                     .from('profiles')
-                    .insert({
+                    .upsert({
                         id: authData.user.id,
                         nombre: nuevoNombre,
                         apellidos: nuevoApellido,
