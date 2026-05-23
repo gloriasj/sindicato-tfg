@@ -187,7 +187,7 @@ export default function Usuarios() {
             if (authData?.user) {
                 const { error: profileError } = await supabase
                     .from('profiles')
-                    .insert({
+                    .upsert({
                         id: authData.user.id,
                         nombre: nuevoNombre,
                         apellidos: nuevoApellido,
@@ -358,7 +358,7 @@ export default function Usuarios() {
                                     sx={inputStyle}
                                 />
                                 <TextField
-                                    label="Contraseña Temporal"
+                                    label="Contraseña"
                                     type="password"
                                     required
                                     fullWidth
