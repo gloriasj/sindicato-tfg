@@ -16,5 +16,14 @@ if (!supabaseUrl || !supabaseAnon) {
     'Crea un archivo .env en la raíz con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.'
   );
 }
-
+// el que usa la app y mantiene la sesión del administrador abierta
 export const supabase = createClient(supabaseUrl, supabaseAnon);
+
+//instancia aislada para que el admin pueda crear los usuarios sin que se le cierre la sesion
+export const supabaseCrearUsuarios = createClient(supabaseUrl, supabaseAnon, {
+  auth: {
+    persistSession: false,      //  No guarda la sesión en el navegador
+    autoRefreshToken: false,    // No refresca el token de forma automática
+    detectSessionInUrl: false   // Ignora los enlaces de confirmación en este cliente
+  }
+});

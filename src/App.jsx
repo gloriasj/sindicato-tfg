@@ -89,7 +89,6 @@ export default function App() {
               <Routes>
                 {/* Rutas Públicas */}
                 <Route path="/login"       element={<Login />} />
-                <Route path="/register"    element={<Register />} />
                 <Route path="/recuperar"   element={<RecuperarPassword />} />
                 <Route path="/restablecer" element={<ResetPassword />} />
 

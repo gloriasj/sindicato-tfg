@@ -309,10 +309,7 @@ export default function AfiliadoForm() {
 function validarDNI(dni) {
   if (!dni) return false;
   const limpio = dni.toUpperCase().trim();
-  if (!/^\d{8}[A-Z]$/.test(limpio)) return false;
-  const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
-  const numero = parseInt(limpio.slice(0, 8), 10);
-  return letras[numero % 23] === limpio[8];
+  return /^\d{8}[A-Z]$/.test(limpio);
 }
 
 function traducirError(msg) {

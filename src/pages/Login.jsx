@@ -159,14 +159,6 @@ export default function Login() {
                 <Button type="submit" variant="contained" size="large" disabled={cargando} fullWidth sx={{ py: 1.4 }}>
                   {cargando ? 'Entrando...' : 'Iniciar sesión'}
                 </Button>
-
-                <Divider sx={{ my: 1, borderColor: '#1e293b' }}>
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>¿Aún no tienes cuenta?</Typography>
-                </Divider>
-
-                <Button component={Link} to="/register" variant="outlined" size="large" fullWidth sx={{ py: 1.4, borderColor: '#1e293b', color: '#fff' }}>
-                  Crear cuenta nueva
-                </Button>
               </Stack>
             </form>
           </Paper>
@@ -187,6 +179,7 @@ function Ventaja({ icono, texto }) {
 }
 
 function traducirError(msg) {
+    if (msg === 'CUENTA_INACTIVA') return 'Tu cuenta ha sido desactivada por un Administrador.';
   if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos';
   if (msg.includes('Email not confirmed')) return 'Confirma tu email antes de entrar';
   return msg;

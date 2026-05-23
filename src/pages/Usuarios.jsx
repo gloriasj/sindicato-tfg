@@ -12,32 +12,38 @@ import {
     DialogContent, DialogActions, TextField, Button
 } from '@mui/material';
 import {
-    AdminPanelSettings as AdminIcon,
-    Badge as DelegadoIcon,
+    Add as AddIcon,
     Edit as EditIcon
 } from '@mui/icons-material';
-import { supabase } from '../lib/supabase';
+// VOLVEMOS AL CLON INVISIBLE (supabaseCrearUsuarios)
+import { supabase, supabaseCrearUsuarios } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
-// --- ESTILOS VISUALES ---
+// --- ESTILOS VISUALES PARA LOS INPUTS (Fondo Blanco / Letra Negra) ---
+const inputStyle = {
+    '& .MuiInputLabel-root': { color: '#64748b' },
+    '& .MuiInputLabel-root.Mui-focused': { color: '#1d4ed8' },
+    '& .MuiOutlinedInput-root': {
+        color: '#000000',
+        backgroundColor: '#ffffff',
+        '& fieldset': { borderColor: '#cbd5e1' },
+        '&:hover fieldset': { borderColor: '#94a3b8' },
+        '&.Mui-focused fieldset': { borderColor: '#1d4ed8' },
+    },
+    '& .MuiInputBase-input': { color: '#000000' },
+    '& .MuiInputBase-input:-webkit-autofill': {
+        WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
+        WebkitTextFillColor: '#000000 !important',
+        transition: 'background-color 5000s ease-in-out 0s',
+    },
+    '& .MuiSvgIcon-root': { color: '#64748b' },
+};
+
 const cardStyle = {
     background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
     borderRadius: 4,
     border: '1px solid rgba(255,255,255,0.06)',
     boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
-};
-
-const inputStyle = {
-    '& .MuiInputLabel-root': { color: '#94a3b8' },
-    '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
-    '& .MuiOutlinedInput-root': {
-        color: '#fff',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        '& fieldset': { borderColor: '#1e293b' },
-        '&:hover fieldset': { borderColor: '#475569' },
-        '&.Mui-focused fieldset': { borderColor: '#3b82f6' },
-    },
-    '& .MuiSvgIcon-root': { color: '#94a3b8' },
 };
 
 const dialogPaperStyle = {
@@ -58,10 +64,20 @@ export default function Usuarios() {
     const [cargando, setCargando] = useState(true);
     const [error, setError]       = useState(null);
 
-    const [modalAbierto, setModalAbierto] = useState(false);
+    // Estados para crear nuevo usuario
+    const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
+    const [nuevoNombre, setNuevoNombre] = useState('');
+    const [nuevoApellido, setNuevoApellido] = useState('');
+    const [nuevoEmailForm, setNuevoEmailForm] = useState('');
+    const [nuevoPassword, setNuevoPassword] = useState('');
+    const [creandoUsuario, setCreandoUsuario] = useState(false);
+
+    // Estados para editar nombre/apellidos
+    const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
     const [usuarioEditar, setUsuarioEditar] = useState(null);
-    const [nuevoEmail, setNuevoEmail]       = useState('');
-    const [guardandoEmail, setGuardandoEmail] = useState(false);
+    const [editNombre, setEditNombre]       = useState('');
+    const [editApellido, setEditApellido]   = useState('');
+    const [guardandoEditar, setGuardandoEditar] = useState(false);
 
     useEffect(() => { cargarUsuarios(); }, []);
 
@@ -114,33 +130,89 @@ export default function Usuarios() {
         }
     }
 
-    function abrirModalEmail(usuario) {
+    function abrirModalEditar(usuario) {
         setUsuarioEditar(usuario);
-        setNuevoEmail(usuario.email || '');
-        setModalAbierto(true);
+        setEditNombre(usuario.nombre || '');
+        setEditApellido(usuario.apellidos || '');
+        setModalEditarAbierto(true);
     }
 
-    async function guardarEmail(e) {
+    async function handleGuardarEditar(e) {
         e.preventDefault();
-        if (!nuevoEmail.trim()) return;
+        if (!editNombre.trim() || !editApellido.trim()) return;
 
-        setGuardandoEmail(true);
+        setGuardandoEditar(true);
 
         const { error } = await supabase
             .from('profiles')
-            .update({ email: nuevoEmail.trim() })
+            .update({
+                nombre: editNombre.trim(),
+                apellidos: editApellido.trim()
+            })
             .eq('id', usuarioEditar.id);
 
-        setGuardandoEmail(false);
+        setGuardandoEditar(false);
 
         if (error) {
-            notificarError('No se pudo actualizar el email: ' + error.message);
+            notificarError('No se pudo actualizar el perfil: ' + error.message);
         } else {
             setUsuarios((prev) =>
-                prev.map((u) => (u.id === usuarioEditar.id ? { ...u, email: nuevoEmail.trim() } : u))
+                prev.map((u) => (u.id === usuarioEditar.id ? { ...u, nombre: editNombre.trim(), apellidos: editApellido.trim() } : u))
             );
-            exito('Correo actualizado');
-            setModalAbierto(false);
+            exito('Datos de usuario actualizados correctamente');
+            setModalEditarAbierto(false);
+        }
+    }
+
+    // --- CREACIÓN DE USUARIOS CON EL CLON INVISIBLE ---
+    async function handleCrearUsuario(e) {
+        e.preventDefault();
+        setCreandoUsuario(true);
+
+        try {
+            const { data: authData, error: authError } = await supabaseCrearUsuarios.auth.signUp({
+                email: nuevoEmailForm,
+                password: nuevoPassword,
+                options: {
+                    data: {
+                        nombre: nuevoNombre,
+                        apellidos: nuevoApellido,
+                        rol: 'delegado'
+                    }
+                }
+            });
+
+            if (authError) throw authError;
+
+            if (authData?.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: authData.user.id,
+                        nombre: nuevoNombre,
+                        apellidos: nuevoApellido,
+                        email: nuevoEmailForm,
+                        rol: 'delegado',
+                        activo: true
+                    });
+
+                if (profileError) throw profileError;
+            }
+
+            exito(`Usuario "${nuevoNombre}" registrado correctamente.`);
+            setModalNuevoAbierto(false);
+
+            setNuevoNombre('');
+            setNuevoApellido('');
+            setNuevoEmailForm('');
+            setNuevoPassword('');
+
+            cargarUsuarios();
+
+        } catch (err) {
+            notificarError('Error al registrar: ' + err.message);
+        } finally {
+            setCreandoUsuario(false);
         }
     }
 
@@ -148,17 +220,29 @@ export default function Usuarios() {
         <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
             <Container maxWidth="lg">
 
-                <Box mb={8}>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Gestión de Usuarios</Typography>
-                    <Typography variant="body1" sx={{ color: '#94a3b8', mt: 0.5 }}>
-                        Control de acceso, edición de credenciales y activación de cuentas del personal.
-                    </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+                    <Box>
+                        <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Gestión de Usuarios</Typography>
+                        <Typography variant="body1" sx={{ color: '#94a3b8', mt: 0.5 }}>
+                            Control de acceso, edición de credenciales y activación de cuentas del personal.
+                        </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={2}>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => setModalNuevoAbierto(true)}
+                            size="small"
+                            sx={{ bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' } }}
+                        >
+                            Nuevo Delegado
+                        </Button>
+                    </Stack>
                 </Box>
 
                 {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-                {/* AÑADIDO mt: 4 PARA SEPARAR EL PAPER DEL SUBTÍTULO */}
-                <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden', mt: 4 }}>
+                <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
                     {cargando ? (
                         <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress /></Box>
                     ) : usuarios.length === 0 ? (
@@ -173,7 +257,7 @@ export default function Usuarios() {
                                         <TableCell sx={tableHeadStyle}>Usuario</TableCell>
                                         <TableCell sx={tableHeadStyle}>Email</TableCell>
                                         <TableCell sx={tableHeadStyle}>Rol del Sistema</TableCell>
-                                        <TableCell sx={tableHeadStyle}>Estado</TableCell>
+                                        <TableCell sx={tableHeadStyle}>Estado de la Cuenta</TableCell>
                                         <TableCell align="right" sx={tableHeadStyle}>Acciones</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -219,17 +303,19 @@ export default function Usuarios() {
                                                                 variant="body2"
                                                                 sx={{ color: esActivo ? '#22c55e' : '#94a3b8', fontWeight: 600 }}
                                                             >
-                                                                {esActivo ? 'Activo' : 'Inactivo'}
+                                                                {esActivo ? 'Activa' : 'Inactiva'}
                                                             </Typography>
                                                         }
                                                     />
                                                 </TableCell>
                                                 <TableCell align="right" sx={tableCellStyle}>
-                                                    <Tooltip title="Editar Email">
-                                                        <IconButton size="small" onClick={() => abrirModalEmail(u)} sx={{ color: '#94a3b8', '&:hover': { color: '#fff' } }}>
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                        <Tooltip title="Editar Nombre/Apellidos">
+                                                            <IconButton size="small" onClick={() => abrirModalEditar(u)} sx={{ color: '#94a3b8', '&:hover': { color: '#fff' } }}>
+                                                                <EditIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </Stack>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -240,31 +326,94 @@ export default function Usuarios() {
                     )}
                 </Paper>
 
-                <Dialog open={modalAbierto} onClose={() => !guardandoEmail && setModalAbierto(false)} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperStyle }}>
-                    <form onSubmit={guardarEmail}>
-                        <DialogTitle>Modificar Correo Electrónico</DialogTitle>
+                {/* --- MODAL PARA CREAR NUEVO USUARIO --- */}
+                <Dialog open={modalNuevoAbierto} onClose={() => !creandoUsuario && setModalNuevoAbierto(false)} PaperProps={{ sx: dialogPaperStyle }} maxWidth="xs" fullWidth>
+                    <form onSubmit={handleCrearUsuario}>
+                        <DialogTitle sx={{ fontWeight: 600 }}>Registrar Nuevo Delegado</DialogTitle>
                         <DialogContent dividers sx={{ borderColor: '#1e293b' }}>
-                            <Typography variant="body2" sx={{ color: '#cbd5e1', mb: 2 }}>
-                                Estás editando el email de <strong>{usuarioEditar?.nombre}</strong>.
-                            </Typography>
-                            <TextField
-                                label="Nuevo Email"
-                                type="email"
-                                required
-                                fullWidth
-                                value={nuevoEmail}
-                                onChange={(e) => setNuevoEmail(e.target.value)}
-                                sx={inputStyle}
-                            />
+                            <Stack spacing={2} sx={{ pt: 1 }}>
+                                <TextField
+                                    label="Nombre"
+                                    required
+                                    fullWidth
+                                    value={nuevoNombre}
+                                    onChange={(e) => setNuevoNombre(e.target.value)}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    label="Apellidos"
+                                    required
+                                    fullWidth
+                                    value={nuevoApellido}
+                                    onChange={(e) => setNuevoApellido(e.target.value)}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    label="Email"
+                                    type="email"
+                                    required
+                                    fullWidth
+                                    value={nuevoEmailForm}
+                                    onChange={(e) => setNuevoEmailForm(e.target.value)}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    label="Contraseña Temporal"
+                                    type="password"
+                                    required
+                                    fullWidth
+                                    value={nuevoPassword}
+                                    onChange={(e) => setNuevoPassword(e.target.value)}
+                                    sx={inputStyle}
+                                    helperText="Mínimo 6 caracteres"
+                                    slotProps={{ formHelperText: { sx: { color: '#64748b' } } }}
+                                />
+                            </Stack>
                         </DialogContent>
                         <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
-                            <Button onClick={() => setModalAbierto(false)} disabled={guardandoEmail} sx={{ color: '#94a3b8' }}>Cancelar</Button>
-                            <Button type="submit" variant="contained" disabled={guardandoEmail}>
-                                {guardandoEmail ? 'Guardando...' : 'Guardar'}
+                            <Button onClick={() => setModalNuevoAbierto(false)} disabled={creandoUsuario} sx={{ color: '#94a3b8' }}>
+                                Cancelar
+                            </Button>
+                            <Button type="submit" variant="contained" disabled={creandoUsuario}>
+                                {creandoUsuario ? 'Registrando...' : 'Registrar'}
                             </Button>
                         </DialogActions>
                     </form>
                 </Dialog>
+
+                {/* --- MODAL PARA EDITAR NOMBRE/APELLIDOS --- */}
+                <Dialog open={modalEditarAbierto} onClose={() => !guardandoEditar && setModalEditarAbierto(false)} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperStyle }}>
+                    <form onSubmit={handleGuardarEditar}>
+                        <DialogTitle sx={{ fontWeight: 600 }}>Modificar Datos del Perfil</DialogTitle>
+                        <DialogContent dividers sx={{ borderColor: '#1e293b' }}>
+                            <Stack spacing={2} sx={{ pt: 1 }}>
+                                <TextField
+                                    label="Nombre"
+                                    required
+                                    fullWidth
+                                    value={editNombre}
+                                    onChange={(e) => setEditNombre(e.target.value)}
+                                    sx={inputStyle}
+                                />
+                                <TextField
+                                    label="Apellidos"
+                                    required
+                                    fullWidth
+                                    value={editApellido}
+                                    onChange={(e) => setEditApellido(e.target.value)}
+                                    sx={inputStyle}
+                                />
+                            </Stack>
+                        </DialogContent>
+                        <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
+                            <Button onClick={() => setModalEditarAbierto(false)} disabled={guardandoEditar} sx={{ color: '#94a3b8' }}>Cancelar</Button>
+                            <Button type="submit" variant="contained" disabled={guardandoEditar}>
+                                {guardandoEditar ? 'Guardando...' : 'Guardar'}
+                            </Button>
+                        </DialogActions>
+                    </form>
+                </Dialog>
+
             </Container>
         </Box>
     );
