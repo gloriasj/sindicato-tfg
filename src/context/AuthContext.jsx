@@ -38,6 +38,8 @@ export function AuthProvider({ children }) {
       } else {
         setLoading(false);
       }
+    }).catch(() => {
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -47,6 +49,7 @@ export function AuthProvider({ children }) {
           cargarPerfil(session.user.id);
         } else {
           setProfile(null);
+          setLoading(false)
         }
       }
     );
