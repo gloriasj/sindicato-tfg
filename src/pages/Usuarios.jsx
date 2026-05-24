@@ -111,7 +111,7 @@ function ModalNuevoUsuario({ abierto, onCerrar, onUsuarioCreado }) {
                         <TextField label="Nombre" required fullWidth value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} sx={inputStyle} />
                         <TextField label="Apellidos" required fullWidth value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} sx={inputStyle} />
                         <TextField label="Email" type="email" required fullWidth value={nuevoEmailForm} onChange={(e) => setNuevoEmailForm(e.target.value)} sx={inputStyle} />
-                        <TextField label="Contraseña Temporal" type="password" required fullWidth value={nuevoPassword} onChange={(e) => setNuevoPassword(e.target.value)} sx={inputStyle} helperText="Mínimo 6 caracteres" slotProps={{ formHelperText: { sx: { color: '#64748b' } } }} />
+                        <TextField label="Contraseña" type="password" required fullWidth value={nuevoPassword} onChange={(e) => setNuevoPassword(e.target.value)} sx={inputStyle} helperText="Mínimo 6 caracteres" slotProps={{ formHelperText: { sx: { color: '#64748b' } } }} />
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ p: 2, borderTop: '1px solid #1e293b' }}>
