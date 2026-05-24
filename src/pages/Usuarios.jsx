@@ -19,7 +19,7 @@ import {
 import { supabase, supabaseCrearUsuarios } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
-// --- ESTILOS VISUALES PARA LOS INPUTS (Fondo Blanco / Letra Negra) ---
+// --- ESTILOS VISUALES PARA LOS INPUTS CORREGIDOS (Sin bucle infinito) ---
 const inputStyle = {
     '& .MuiInputLabel-root': { color: '#64748b' },
     '& .MuiInputLabel-root.Mui-focused': { color: '#1d4ed8' },
@@ -34,7 +34,7 @@ const inputStyle = {
     '& .MuiInputBase-input:-webkit-autofill': {
         WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
         WebkitTextFillColor: '#000000 !important',
-        transition: 'background-color 5000s ease-in-out 0s',
+        // Se elimina la propiedad transition conflictiva que congelaba la vista al poner la '@'
     },
     '& .MuiSvgIcon-root': { color: '#64748b' },
 };
