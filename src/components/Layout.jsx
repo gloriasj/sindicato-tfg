@@ -1,9 +1,3 @@
-// src/components/Layout.jsx
-// -------------------------------------------------------
-// Layout principal con menú lateral y tarjeta de usuario
-// logueado en la parte inferior, mostrando avatar con
-// iniciales, nombre completo y rol obtenidos de la BD.
-// -------------------------------------------------------
 
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -30,16 +24,12 @@ import Logo from './Logo';
 
 const ANCHO_DRAWER = 260;
 
-// =========================================================
-// Colores de avatar según el rol del usuario.
-// Generamos un color estable a partir del rol para que sea
-// consistente en cada sesión.
-// =========================================================
 function colorPorRol(rol) {
-    if (rol === 'admin') return '#a855f7';   // morado (admin)
-    return '#5b8def';                          // azul (delegado)
+    if (rol === 'admin') return '#a855f7';   // morado admin
+    return '#5b8def';                          // azul delegado
 }
 
+//funcion para sacar las iniciales como gloria prueba -> gp
 function iniciales(nombre, apellidos) {
     const ini1 = nombre?.[0]?.toUpperCase()    ?? '?';
     const ini2 = apellidos?.[0]?.toUpperCase() ?? '';
@@ -52,8 +42,9 @@ export default function Layout() {
     const { puedeAdministrarSectores, puedeGestionarUsuarios } = usePermisos();
 
     const navigate = useNavigate();
-    const location = useLocation();
+    const location = useLocation(); //sabe en que url estamos
 
+    //estados para controlar los menus y el modal de cerrar sesión
     const [drawerAbierto, setDrawerAbierto] = useState(false);
     const [confirmarLogout, setConfirmarLogout] = useState(false);
     const [cerrandoSesion, setCerrandoSesion] = useState(false);
@@ -68,9 +59,10 @@ export default function Layout() {
 
     function handleNavegar(ruta) {
         navigate(ruta);
-        setDrawerAbierto(false);
+        setDrawerAbierto(false); //cierra el menu movil si esta abierto
     }
 
+    //funcion que habla con supabase para romper la sesion actual
     async function handleLogout() {
         setCerrandoSesion(true);
         await logout();

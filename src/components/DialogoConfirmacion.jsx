@@ -1,9 +1,3 @@
-// src/components/DialogoConfirmacion.jsx
-// -------------------------------------------------------
-// Diálogo modal para pedir confirmación antes de hacer
-// una acción destructiva (borrar, dar de baja, etc.).
-// Se usa en varias páginas para no repetir código.
-// -------------------------------------------------------
 
 import {
   Dialog, DialogTitle, DialogContent, DialogContentText,
