@@ -1,16 +1,3 @@
-// src/context/NotificacionContext.jsx
-// -------------------------------------------------------
-// Sistema global de notificaciones (Snackbar de MUI).
-// Cualquier componente puede mostrar mensajes flotantes
-// llamando a useNotificacion():
-//
-//   const { exito, error, info, advertencia } = useNotificacion();
-//   exito('Afiliado creado correctamente');
-//   error('No se pudo eliminar');
-//
-// El Snackbar aparece en la esquina inferior y desaparece
-// solo a los 4 segundos (o al cerrarlo manualmente).
-// -------------------------------------------------------
 
 import { createContext, useContext, useState, useCallback } from 'react';
 import { Snackbar, Alert } from '@mui/material';
@@ -21,7 +8,7 @@ export function NotificacionProvider({ children }) {
   const [estado, setEstado] = useState({
     abierto: false,
     mensaje: '',
-    severidad: 'info', // 'success' | 'error' | 'warning' | 'info'
+    severidad: 'info',
   });
 
   const mostrar = useCallback((mensaje, severidad = 'info') => {
@@ -33,7 +20,6 @@ export function NotificacionProvider({ children }) {
     setEstado((prev) => ({ ...prev, abierto: false }));
   }, []);
 
-  // Helpers de conveniencia para cada tipo
   const exito       = useCallback((m) => mostrar(m, 'success'), [mostrar]);
   const error       = useCallback((m) => mostrar(m, 'error'),   [mostrar]);
   const advertencia = useCallback((m) => mostrar(m, 'warning'), [mostrar]);

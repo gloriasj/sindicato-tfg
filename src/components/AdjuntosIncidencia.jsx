@@ -196,7 +196,7 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
               onClick={() => inputFileRef.current?.click()}
               disabled={subiendo}
               size="small"
-              sx={{ ml: 4, flexShrink: 0 }} // ml: 4 asegura la separación, flexShrink evita que se encoja
+              sx={{ ml: 4, flexShrink: 0 }}
           >
             {subiendo ? 'Subiendo...' : 'Subir archivo'}
           </Button>
@@ -253,9 +253,6 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
   );
 }
 
-// =========================================================
-// Fila de un archivo en la lista
-// =========================================================
 function FilaArchivo({ archivo, onDescargar, onBorrar }) {
   return (
       <Paper
@@ -300,7 +297,6 @@ function FilaArchivo({ archivo, onDescargar, onBorrar }) {
   );
 }
 
-// === Helpers ===
 
 function iconoTipo(mime) {
   const props = { sx: { color: '#94a3b8', fontSize: 28 } };

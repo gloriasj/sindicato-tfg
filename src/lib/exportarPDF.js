@@ -1,49 +1,11 @@
-// src/lib/exportarPDF.js
-// -------------------------------------------------------
-// Utilidad para generar y descargar archivos PDF a partir
-// de una lista de datos. Incluye cabecera con título,
-// fecha de generación y tabla con bordes y zebra striping.
-//
-// Usa jsPDF + jspdf-autotable, dos librerías muy populares
-// en JavaScript que generan PDFs en el navegador sin
-// necesidad de servidor.
-//
-// Uso:
-//   exportarPDF({
-//     titulo: 'Listado de afiliados',
-//     subtitulo: '8 afiliados activos',
-//     filas: [...],
-//     columnas: [
-//       { clave: 'dni',    etiqueta: 'DNI' },
-//       { clave: 'nombre', etiqueta: 'Nombre' },
-//     ],
-//     nombreArchivo: 'afiliados.pdf',
-//   });
-// -------------------------------------------------------
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-/**
- * Obtiene un valor anidado del objeto usando notación con puntos:
- *   obtenerValor(obj, 'sector.nombre')
- */
 function obtenerValor(obj, ruta) {
   return ruta.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 }
 
-/**
- * Genera un PDF con cabecera y tabla, y lo descarga.
- *
- * @param {object} opciones
- * @param {string} opciones.titulo         Título principal del informe
- * @param {string} opciones.subtitulo      Texto secundario (resumen, número de filas...)
- * @param {Array<object>} opciones.filas   Datos a mostrar en la tabla
- * @param {Array<{clave:string, etiqueta:string, formato?:Function, ancho?:number}>} opciones.columnas
- *        Definición de columnas
- * @param {string} opciones.nombreArchivo  Nombre del archivo final (con .pdf)
- * @param {string} [opciones.orientacion]  'portrait' (vertical) o 'landscape' (horizontal). Default 'landscape'.
- */
 export function exportarPDF({
   titulo,
   subtitulo = '',
@@ -52,19 +14,17 @@ export function exportarPDF({
   nombreArchivo,
   orientacion = 'landscape',
 }) {
-  // 1. Crear documento PDF en formato A4
+
   const doc = new jsPDF({
     orientation: orientacion,
     unit: 'mm',
     format: 'a4',
   });
 
-  // ------ CABECERA ------
-  // Banda superior con color azul institucional
   doc.setFillColor(40, 61, 97); // #283d61
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F');
 
-  // Texto del título en blanco sobre la banda
+  // Texto del título en blanco
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
@@ -81,14 +41,13 @@ export function exportarPDF({
     doc.internal.pageSize.getWidth() - 14, 12,
     { align: 'right' });
 
-  // ------ SUBTÍTULO ------
+
   doc.setTextColor(60, 60, 60);
   if (subtitulo) {
     doc.setFontSize(10);
     doc.text(subtitulo, 14, 30);
   }
 
-  // ------ TABLA ------
   const head = [columnas.map((c) => c.etiqueta)];
 
   const body = filas.map((fila) =>
@@ -99,7 +58,7 @@ export function exportarPDF({
     })
   );
 
-  // Configuración de anchos de columna si se han indicado
+
   const columnStyles = {};
   columnas.forEach((c, i) => {
     if (c.ancho) columnStyles[i] = { cellWidth: c.ancho };
@@ -109,9 +68,9 @@ export function exportarPDF({
     head,
     body,
     startY: subtitulo ? 35 : 28,
-    theme: 'striped',                       // alterna colores
+    theme: 'striped',
     headStyles: {
-      fillColor: [40, 61, 97],              // mismo azul que la cabecera
+      fillColor: [40, 61, 97],
       textColor: 255,
       fontStyle: 'bold',
       fontSize: 9,
@@ -121,7 +80,7 @@ export function exportarPDF({
       cellPadding: 2.5,
     },
     alternateRowStyles: {
-      fillColor: [243, 246, 251],           // gris muy claro
+      fillColor: [243, 246, 251],
     },
     columnStyles,
     margin: { left: 14, right: 14 },
@@ -140,7 +99,7 @@ export function exportarPDF({
     },
   });
 
-  // Si la tabla está vacía, escribir mensaje
+
   if (filas.length === 0) {
     doc.setFontSize(11);
     doc.setTextColor(120);
@@ -152,6 +111,5 @@ export function exportarPDF({
     );
   }
 
-  // ------ DESCARGAR ------
   doc.save(nombreArchivo);
 }

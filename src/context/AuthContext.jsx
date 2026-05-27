@@ -1,7 +1,3 @@
-// Contexto global de autenticación.
-// Mantiene la sesión, el perfil del usuario y expone
-// las funciones login, registro y logout.
-
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -57,12 +53,12 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     try {
-      // Supabase comprueba la contraseña en su bóveda
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) return { error };
 
-      // EL PORTERO INTERCEPTOR
+      // portero
       if (data?.user) {
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
@@ -70,15 +66,14 @@ export function AuthProvider({ children }) {
             .eq('id', data.user.id)
             .single();
 
-        // Si la base de datos bloquea la lectura (profileError) por las reglas de seguridad
-        // O si conseguimos leerlo y dice explícitamente activo: false
+
         if (profileError || (profileData && profileData.activo === false)) {
-          await supabase.auth.signOut(); // Destruimos la sesión (logout forzoso)
-          return { error: { message: 'CUENTA_INACTIVA' } }; // Enviamos nuestro código secreto
+          await supabase.auth.signOut();
+          return { error: { message: 'CUENTA_INACTIVA' } };
         }
       }
 
-      /*si todo esta bien y es un usuario activo se deja pasar*/
+
       return { error: null };
 
     } catch (err) {
