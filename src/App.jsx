@@ -1,21 +1,17 @@
-// src/App.jsx
-// -------------------------------------------------------
-// Configuración global: Providers, Router y Tema MUI.
-// -------------------------------------------------------
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 
-// Contextos
+
 import { AuthProvider } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 
-// Componentes de protección
+
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute     from './components/AdminRoute';
 import Layout         from './components/Layout';
 
-// Páginas
+
 import Login              from './pages/Login';
 import RecuperarPassword  from './pages/RecuperarPassword';
 import ResetPassword      from './pages/ResetPassword';
@@ -29,9 +25,7 @@ import IncidenciaDetalle  from './pages/IncidenciaDetalle';
 import Sectores           from './pages/Sectores';
 import Usuarios           from './pages/Usuarios';
 
-// =========================================================
-// TEMA REFINADO
-// =========================================================
+
 const theme = createTheme({
   palette: {
     primary: {
@@ -86,7 +80,7 @@ export default function App() {
           <NotificacionProvider>
             <AuthProvider>
               <Routes>
-                {/* Rutas Públicas */}
+
                 <Route path="/login"       element={<Login />} />
                 <Route path="/recuperar"   element={<RecuperarPassword />} />
                 <Route path="/restablecer" element={<ResetPassword />} />
@@ -103,7 +97,7 @@ export default function App() {
 
                   <Route path="/incidencias"             element={<Incidencias />} />
                   <Route path="/incidencias/nuevo"       element={<IncidenciaForm />} />
-                  <Route path="/incidencias/:id"         element={<IncidenciaDetalle />} />      {/* <-- AHORA VA A DETALLE */}
+                  <Route path="/incidencias/:id"         element={<IncidenciaDetalle />} />
                   <Route path="/incidencias/:id/editar"  element={<IncidenciaForm />} />
 
                   <Route element={<AdminRoute />}>
@@ -112,7 +106,7 @@ export default function App() {
                   </Route>
                 </Route>
 
-                {/* Ruta 404 */}
+
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </AuthProvider>

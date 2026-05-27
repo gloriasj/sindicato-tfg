@@ -1,8 +1,3 @@
-// src/pages/AfiliadoDetalle.jsx
-// -------------------------------------------------------
-// Ficha de afiliado con sus incidencias asociadas.
-// Ahora con opción de Exportar a PDF y sin botón de edición.
-// -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link as RouterLink, useLocation } from 'react-router-dom';
@@ -29,7 +24,7 @@ import { usePermisos } from '../lib/usePermisos';
 import { exportarPDF } from '../lib/exportarPDF';
 import { useNotificacion } from '../context/NotificacionContext';
 
-// --- ESTILOS VISUALES ---
+
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
@@ -39,7 +34,7 @@ const cardStyle = {
 
 const tableHeadStyle = { color: '#94a3b8', borderBottom: '1px solid #1e293b', fontWeight: 600, bgcolor: 'rgba(0,0,0,0.2)' };
 const tableCellStyle = { color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)' };
-// ------------------------
+
 
 const ESTADOS = {
   pendiente:  { label: 'Pendiente',  color: '#f59e0b', bgcolor: 'rgba(245, 158, 11, 0.1)' },
@@ -352,7 +347,6 @@ export default function AfiliadoDetalle() {
   );
 }
 
-// === Componentes Auxiliares ===
 
 function DatoCampo({ icono, etiqueta, valor }) {
   return (

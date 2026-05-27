@@ -1,9 +1,3 @@
-// src/pages/Afiliados.jsx
-// -------------------------------------------------------
-// Listado de afiliados. La gestión completa (crear, editar,
-// borrar) está disponible tanto para administradores como
-// para delegados, según la matriz de permisos.
-// -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +19,7 @@ import { useNotificacion } from '../context/NotificacionContext';
 import { usePermisos } from '../lib/usePermisos';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
-// Estilos globales de la vista
+
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
@@ -47,7 +41,7 @@ const inputStyle = {
   '& .MuiSvgIcon-root': { color: '#94a3b8' },
 };
 
-// Estilos para la tabla
+
 const tableHeadStyle = { color: '#94a3b8', borderBottom: '1px solid #1e293b', fontWeight: 600, bgcolor: 'rgba(0,0,0,0.2)' };
 const tableCellStyle = { color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)' };
 
@@ -139,7 +133,7 @@ export default function Afiliados() {
       <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
         <Container maxWidth="xl">
 
-          {/* HEADER: Título a la izquierda, Botones a la derecha */}
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
             <Box>
               <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Afiliados</Typography>
@@ -158,9 +152,8 @@ export default function Afiliados() {
             </Stack>
           </Box>
 
-          {/* FILTROS Y BARRA DE BÚSQUEDA */}
+
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 5 }} alignItems="stretch">
-            {/* BARRA DE BUSCAR: Corregida para que el texto sea blanco */}
             <Paper sx={{ ...cardStyle, borderRadius: '50px', p: 1, display: 'flex', alignItems: 'center', px: 2, flex: 1 }}>
               <SearchIcon sx={{ color: '#64748b', ml: 1, mr: 1 }} />
               <TextField
@@ -169,14 +162,14 @@ export default function Afiliados() {
                   variant="standard"
                   value={busqueda}
                   onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
-                  // inputProps (con 'i' minúscula) afecta al elemento HTML <input> directamente
+
                   inputProps={{
                     style: {
                       color: '#ffffff',
-                      WebkitTextFillColor: '#ffffff', // Fuerza el color en navegadores Webkit (Chrome/Safari)
+                      WebkitTextFillColor: '#ffffff',
                     }
                   }}
-                  // sx afecta al contenedor del componente
+
                   sx={{
                     '& .MuiInput-root': {
                       color: '#ffffff',
@@ -194,7 +187,7 @@ export default function Afiliados() {
               />
             </Paper>
 
-            {/* FILTROS ADICIONALES (Sector y Estado) */}
+
             <TextField select size="small" label="Sector"
                        value={filtroSector}
                        onChange={(e) => { setFiltroSector(e.target.value); setPagina(0); }}

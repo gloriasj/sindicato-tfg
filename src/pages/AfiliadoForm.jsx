@@ -1,9 +1,3 @@
-// src/pages/AfiliadoForm.jsx
-// -------------------------------------------------------
-// Formulario para crear / editar un afiliado.
-// Usa el sistema global de notificaciones para los avisos
-// de éxito y error, en lugar de Alerts dentro del form.
-// -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,7 +10,7 @@ import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-materia
 import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
-// --- ESTILOS VISUALES PARA LOS INPUTS ---
+
 const inputStyle = {
   '& .MuiInputLabel-root': { color: '#94a3b8' },
   '& .MuiInputLabel-root.Mui-focused': { color: '#3b82f6' },
@@ -32,7 +26,7 @@ const inputStyle = {
   '& .MuiInputBase-input::placeholder': { color: '#94a3b8', opacity: 0.7 },
   '& .MuiFormHelperText-root': { color: '#94a3b8' },
 };
-// ----------------------------------------
+
 
 const ESTADO_INICIAL = {
   dni: '', nombre: '', apellidos: '', email: '', telefono: '',

@@ -1,8 +1,3 @@
-// src/pages/Sectores.jsx
-// -------------------------------------------------------
-// Gestión de sectores profesionales.
-// Acceso exclusivo para administradores. Permite CRUD completo.
-// -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import {
@@ -21,7 +16,6 @@ import { supabase } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from '../components/DialogoConfirmacion';
 
-// --- ESTILOS VISUALES ---
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
@@ -56,13 +50,13 @@ export default function Sectores() {
   const [conteos, setConteos]   = useState({});
   const [cargando, setCargando] = useState(true);
 
-  // Estados para el Modal de Crear/Editar
+
   const [modalAbierto, setModalAbierto] = useState(false);
   const [sectorActual, setSectorActual] = useState(null);
   const [formulario, setFormulario]     = useState({ nombre: '', descripcion: '' });
   const [guardando, setGuardando]       = useState(false);
 
-  // Estados para el Modal de Borrar
+
   const [aBorrar, setABorrar]   = useState(null);
   const [borrando, setBorrando] = useState(false);
 
@@ -130,7 +124,7 @@ export default function Sectores() {
     }
   }
 
-  // --- LÓGICA DE BORRAR ---
+
   async function confirmarBorrado() {
     if (!aBorrar) return;
     setBorrando(true);
@@ -156,7 +150,6 @@ export default function Sectores() {
       <Box sx={{ minHeight: '100vh', bgcolor: '#080d1c', pt: 4, pb: 8 }}>
         <Container maxWidth="md">
 
-          {/* HEADER AJUSTADO */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
             <Box>
               <Typography variant="h4" fontWeight={700} sx={{ color: '#ffffff' }}>Sectores</Typography>

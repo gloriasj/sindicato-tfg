@@ -1,4 +1,4 @@
-// src/pages/IncidenciaDetalle.jsx
+
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link as RouterLink, useLocation } from 'react-router-dom';
 import {
@@ -223,7 +223,7 @@ export default function IncidenciaDetalle() {
                   sx={{ color: '#fff', borderColor: '#1e293b' }}
                   onClick={() => {
                     navigate(`/afiliados/${af?.id}/detalle`, {
-                      state: { fromIncidenciaId: id } // PASAMOS EL ESTADO CORRECTAMENTE
+                      state: { fromIncidenciaId: id }
                     });
                   }}
               >

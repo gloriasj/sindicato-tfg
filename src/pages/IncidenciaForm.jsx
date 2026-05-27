@@ -1,4 +1,4 @@
-// src/pages/IncidenciaForm.jsx
+
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -53,7 +53,7 @@ export default function IncidenciaForm() {
   const [guardando, setGuardando] = useState(false);
   const [errorForm, setErrorForm] = useState(null);
 
-  // Estado local para almacenar archivos elegidos antes de crear la incidencia
+
   const [archivosNuevos, setArchivosNuevos] = useState([]);
   const inputFileRef = useRef(null);
 
@@ -83,7 +83,6 @@ export default function IncidenciaForm() {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   }
 
-  // Manejador para la cola de archivos locales en modo creación
   function handleSeleccionarArchivosNuevos(e) {
     const files = Array.from(e.target.files || []);
     const validos = files.filter(f => f.size <= 10 * 1024 * 1024);
@@ -119,7 +118,7 @@ export default function IncidenciaForm() {
       return;
     }
 
-    // Si estamos creando una nueva incidencia y el usuario seleccionó archivos provisionales
+
     if (!esEdicion && archivosNuevos.length > 0) {
       const nuevoId = respuesta.data.id;
 
@@ -212,7 +211,7 @@ export default function IncidenciaForm() {
               <TextField label="Resolución / observaciones" sx={inputStyle} value={datos.resolucion}
                          onChange={(e) => actualizar('resolucion', e.target.value)} fullWidth multiline rows={3} />
 
-              {/* SECCIÓN DE ADJUNTOS DE ACUERDO AL MODO (CREACIÓN O EDICIÓN) */}
+
               {esEdicion ? (
                   <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid #1e293b' }}>
                     <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>Archivos Adjuntos</Typography>

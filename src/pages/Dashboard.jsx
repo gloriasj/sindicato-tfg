@@ -1,15 +1,3 @@
-// src/pages/Dashboard.jsx
-// -------------------------------------------------------
-// Dashboard del Portal Sindical con datos reales de
-// Supabase, tema oscuro tipo herramienta de analytics.
-//
-// Diseño actualizado:
-// - Tarjetas KPI más vistosas con halos de color y
-//   sparkline prominente
-// - Gráficos con mejor proporción y espaciado
-// - Mejor jerarquía visual entre secciones
-// - Doble tabla inferior (Últimas y Resueltas)
-// -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,13 +14,9 @@ import {
 } from 'recharts';
 import { supabase } from '../lib/supabase';
 
-// =========================================================
-// Paleta institucional adaptada a fondo oscuro
-// =========================================================
-
 const COLORES = {
-    primario: '#5b8def',   // azul
-    ambar:    '#f1880d',   // ámbar
+    primario: '#5b8def',
+    ambar:    '#f1880d',
     verde:    '#10b981',
     rojo:     '#ef4444',
     amarillo: '#f59e0b',
@@ -45,7 +29,7 @@ const PALETA_SECTORES = [
     '#a855f7', '#ef4444', '#06b6d4',
 ];
 
-// Estilo base de tarjeta
+
 const cardStyle = {
     background:   'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
     borderRadius: 4,
@@ -68,9 +52,6 @@ const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 
-// =========================================================
-// COMPONENTE PRINCIPAL
-// =========================================================
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -107,7 +88,7 @@ export default function Dashboard() {
         setCargando(false);
     }
 
-    // ====== KPIs y agregaciones ======
+
 
     const stats = useMemo(() => {
         const afiliadosActivos = afiliados.filter(a => a.activo).length;
@@ -136,7 +117,6 @@ export default function Dashboard() {
         };
     }, [afiliados, incidencias]);
 
-    // ====== Incidencias por mes (últimos 6 meses) ======
 
     const incidenciasPorMes = useMemo(() => {
         const hoy = new Date();
@@ -153,7 +133,7 @@ export default function Dashboard() {
         return datos;
     }, [incidencias]);
 
-    // ====== Por sector ======
+
 
     const incidenciasPorSector = useMemo(() => {
         const agrupado = {};
@@ -169,7 +149,7 @@ export default function Dashboard() {
             .sort((a, b) => b.valor - a.valor);
     }, [incidencias]);
 
-    // ====== Estado de incidencias ======
+
 
     const estadoIncidencias = useMemo(() => ([
         { nombre: 'Pendientes', valor: stats.pendientes, color: COLORES.amarillo },
@@ -177,7 +157,7 @@ export default function Dashboard() {
         { nombre: 'Resueltas',  valor: stats.resueltas,  color: COLORES.verde },
     ].filter(x => x.valor > 0)), [stats]);
 
-    // ====== Configuración de KPIs ======
+
 
     const sparkData = incidenciasPorMes.map(m => ({ v: m.total }));
 
@@ -229,9 +209,6 @@ export default function Dashboard() {
             .slice(0, 5);
     }, [incidencias]);
 
-    // =========================================================
-    // RENDER
-    // =========================================================
 
     if (cargando) {
         return (
@@ -256,7 +233,7 @@ export default function Dashboard() {
             px: { xs: 2, md: 4, lg: 5 },
             py: 4,
         }}>
-            {/* === Cabecera === */}
+
             <Box mb={5}>
                 <Typography variant="h4" fontWeight={700} sx={{
                     color: '#ffffff',
@@ -272,7 +249,7 @@ export default function Dashboard() {
                 </Typography>
             </Box>
 
-            {/* === Fila 1: tarjetas KPI === */}
+
             <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: {
@@ -289,7 +266,7 @@ export default function Dashboard() {
                 ))}
             </Box>
 
-            {/* === Fila 2: tres gráficos en grid CSS para ocupar todo el ancho === */}
+
             <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: {
@@ -299,7 +276,7 @@ export default function Dashboard() {
                 gap: 3,
                 mb: 5,
             }}>
-                {/* Incidencias por mes */}
+
                 <Paper sx={{
                     ...cardStyle, p: 3.5, height: 400,
                     display: 'flex', flexDirection: 'column',
@@ -353,7 +330,7 @@ export default function Dashboard() {
                     </Box>
                 </Paper>
 
-                {/* Incidencias por sector */}
+
                 <Paper sx={{
                     ...cardStyle, p: 3.5, height: 400,
                     display: 'flex', flexDirection: 'column',
@@ -454,7 +431,7 @@ export default function Dashboard() {
                     )}
                 </Paper>
 
-                {/* Estado de incidencias */}
+
                 <Paper sx={{
                     ...cardStyle, p: 3.5, height: 400,
                     display: 'flex', flexDirection: 'column',
@@ -495,7 +472,7 @@ export default function Dashboard() {
                                         }} />
                                     </PieChart>
                                 </ResponsiveContainer>
-                                {/* Total en el centro */}
+
                                 <Box sx={{
                                     position: 'absolute', top: '50%', left: '50%',
                                     transform: 'translate(-50%, -50%)',
@@ -556,16 +533,16 @@ export default function Dashboard() {
                 </Paper>
             </Box>
 
-            {/* Espacio extra entre los gráficos y la tabla */}
+
             <Box sx={{ height: { xs: 16, md: 32 } }} />
 
-            {/* === Fila 3: Grid de tablas (Últimas creadas y Últimas resueltas) === */}
+
             <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
                 gap: 3,
             }}>
-                {/* TABLA 1: ÚLTIMAS INCIDENCIAS GENERALES */}
+
                 <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
                     <Box sx={{
                         px: 3.5, py: 2.5,
@@ -655,7 +632,7 @@ export default function Dashboard() {
                     )}
                 </Paper>
 
-                {/* TABLA 2: ÚLTIMAS RESUELTAS */}
+
                 <Paper sx={{ ...cardStyle, p: 0, overflow: 'hidden' }}>
                     <Box sx={{
                         px: 3.5, py: 2.5,
@@ -749,11 +726,6 @@ export default function Dashboard() {
     );
 }
 
-
-// =========================================================
-// Componente de Tarjeta KPI — rediseñado
-// =========================================================
-
 function TarjetaKPI({ kpi, index }) {
     return (
         <Paper sx={{
@@ -769,7 +741,7 @@ function TarjetaKPI({ kpi, index }) {
                 boxShadow: `0 20px 50px ${kpi.color}20`,
             },
         }}>
-            {/* Halo de color en la esquina superior */}
+
             <Box sx={{
                 position: 'absolute',
                 top: -50, right: -50,
@@ -780,7 +752,7 @@ function TarjetaKPI({ kpi, index }) {
                 filter: 'blur(40px)',
             }} />
 
-            {/* Contenido principal */}
+
             <Box sx={{
                 p: 3.5,
                 position: 'relative',
@@ -789,7 +761,7 @@ function TarjetaKPI({ kpi, index }) {
                 display: 'flex',
                 flexDirection: 'column',
             }}>
-                {/* Icono con halo */}
+
                 <Box sx={{
                     width: 56, height: 56,
                     borderRadius: '14px',
@@ -804,7 +776,7 @@ function TarjetaKPI({ kpi, index }) {
                     {kpi.icon}
                 </Box>
 
-                {/* Título y valor */}
+
                 <Typography sx={{
                     color: '#94a3b8',
                     fontSize: '0.82rem',
@@ -825,7 +797,7 @@ function TarjetaKPI({ kpi, index }) {
                 </Typography>
             </Box>
 
-            {/* Sparkline en la parte inferior */}
+
             <Box sx={{
                 height: 80,
                 width: '100%',
@@ -857,9 +829,6 @@ function TarjetaKPI({ kpi, index }) {
 }
 
 
-// =========================================================
-// Otros componentes auxiliares
-// =========================================================
 
 function ChipPrioridad({ prioridad }) {
     const config = {

@@ -1,7 +1,3 @@
-// src/pages/Incidencias.jsx
-// -------------------------------------------------------
-// Listado de incidencias de la aplicación.
-// -------------------------------------------------------
 
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +15,7 @@ import {
 } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 
-// Estilos globales de la vista
+
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
@@ -131,7 +127,7 @@ export default function Incidencias() {
             </Stack>
           </Box>
 
-          {/* FILTROS Y BARRA DE BÚSQUEDA */}
+
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 5 }} alignItems="stretch">
             {/* BARRA DE BUSCAR: Corregida para que el texto sea blanco */}
             <Paper sx={{ ...cardStyle, borderRadius: '50px', p: 1, display: 'flex', alignItems: 'center', px: 2, flex: 1 }}>
@@ -142,14 +138,14 @@ export default function Incidencias() {
                   variant="standard"
                   value={busqueda}
                   onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
-                  // inputProps (con 'i' minúscula) afecta al elemento HTML <input> directamente
+
                   inputProps={{
                     style: {
                       color: '#ffffff',
-                      WebkitTextFillColor: '#ffffff', // Fuerza el color en navegadores Webkit (Chrome/Safari)
+                      WebkitTextFillColor: '#ffffff',
                     }
                   }}
-                  // sx afecta al contenedor del componente
+
                   sx={{
                     '& .MuiInput-root': {
                       color: '#ffffff',
@@ -157,7 +153,7 @@ export default function Incidencias() {
                     '& .MuiInput-input': {
                       color: '#ffffff !important',
                       WebkitTextFillColor: '#ffffff !important',
-                      caretColor: '#ffffff' // Esto asegura que el cursor sea blanco
+                      caretColor: '#ffffff'
                     },
                     '& .MuiInput-input::placeholder': {
                       color: '#94a3b8 !important',
@@ -229,7 +225,7 @@ export default function Incidencias() {
                                   <MuiLink
                                       component="button"
                                       underline="none"
-                                      // EL TÍTULO VA A DETALLE
+
                                       onClick={() => navigate(`/incidencias/${i.id}`)}
                                       sx={{
                                         textAlign: 'left',
@@ -271,7 +267,7 @@ export default function Incidencias() {
                                   <Tooltip title="Editar">
                                     <IconButton
                                         size="small"
-                                        // ICONO EDITAR VA A EDITAR
+
                                         onClick={() => navigate(`/incidencias/${i.id}/editar`)}
                                         sx={{ color: '#94a3b8', '&:hover': { color: '#3b82f6' } }}
                                     >

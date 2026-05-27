@@ -1,7 +1,3 @@
-// src/pages/Usuarios.jsx
-// -------------------------------------------------------
-// Panel de gestión de usuarios del sistema.
-// -------------------------------------------------------
 
 import { useEffect, useState } from 'react';
 import {
@@ -15,11 +11,11 @@ import {
     Add as AddIcon,
     Edit as EditIcon
 } from '@mui/icons-material';
-// VOLVEMOS AL CLON INVISIBLE (supabaseCrearUsuarios)
+
 import { supabase, supabaseCrearUsuarios } from '../lib/supabase';
 import { useNotificacion } from '../context/NotificacionContext';
 
-// --- ESTILOS VISUALES PARA LOS INPUTS CORREGIDOS (Sin bucle infinito) ---
+
 const inputStyle = {
     '& .MuiInputLabel-root': { color: '#64748b' },
     '& .MuiInputLabel-root.Mui-focused': { color: '#1d4ed8' },
@@ -132,10 +128,10 @@ export default function Usuarios() {
     const [cargando, setCargando] = useState(true);
     const [error, setError]       = useState(null);
 
-    // Estados para crear nuevo usuario
+
     const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
 
-    // Estados para editar nombre/apellidos
+
     const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
     const [usuarioEditar, setUsuarioEditar] = useState(null);
     const [editNombre, setEditNombre]       = useState('');
@@ -337,14 +333,14 @@ export default function Usuarios() {
                     )}
                 </Paper>
 
-                {/* --- MODAL PARA CREAR NUEVO USUARIO --- */}
+
                 <ModalNuevoUsuario
                     abierto={modalNuevoAbierto}
                     onCerrar={() => setModalNuevoAbierto(false)}
                     onUsuarioCreado={cargarUsuarios}
                 />
 
-                {/* --- MODAL PARA EDITAR NOMBRE/APELLIDOS --- */}
+
                 <Dialog open={modalEditarAbierto} onClose={() => !guardandoEditar && setModalEditarAbierto(false)} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperStyle }}>
                     <form onSubmit={handleGuardarEditar}>
                         <DialogTitle sx={{ fontWeight: 600 }}>Modificar Datos del Perfil</DialogTitle>

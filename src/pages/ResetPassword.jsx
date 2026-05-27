@@ -1,10 +1,3 @@
-// src/pages/ResetPassword.jsx
-// -------------------------------------------------------
-// El usuario llega a esta pantalla desde el enlace del
-// email enviado por Supabase. La sesión ya viene con un
-// token temporal que permite cambiar la contraseña sin
-// haber iniciado sesión previamente.
-// -------------------------------------------------------
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -23,7 +16,7 @@ export default function ResetPassword() {
   const [cargando, setCargando]   = useState(false);
   const [sesionLista, setSesionLista] = useState(false);
 
-  // Comprobamos que tenemos sesión válida (viene del enlace del email)
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {

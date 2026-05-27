@@ -1,9 +1,3 @@
-// src/lib/supabase.js
-// -------------------------------------------------------
-// Cliente de Supabase. Centraliza la conexión con el
-// backend para que cualquier componente pueda usarlo.
-// Las credenciales vienen del archivo .env.
-// -------------------------------------------------------
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -22,8 +16,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnon);
 //instancia aislada para que el admin pueda crear los usuarios sin que se le cierre la sesion
 export const supabaseCrearUsuarios = createClient(supabaseUrl, supabaseAnon, {
   auth: {
-    persistSession: false,      //  No guarda la sesión en el navegador
-    autoRefreshToken: false,    // No refresca el token de forma automática
-    detectSessionInUrl: false   // Ignora los enlaces de confirmación en este cliente
+    persistSession: false,      //  no guarda la sesión en el navegador
+    autoRefreshToken: false,    // no refresca el token de forma automática
+    detectSessionInUrl: false   // ignora los enlaces de confirmación en este cliente
   }
 });

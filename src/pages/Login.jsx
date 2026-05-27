@@ -1,7 +1,3 @@
-// src/pages/Login.jsx
-// -------------------------------------------------------
-// Pantalla de inicio de sesión con estilo oscuro aplicado.
-// -------------------------------------------------------
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,7 +13,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 
-// --- ESTILOS COMPARTIDOS ---
+
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
@@ -66,7 +62,7 @@ export default function Login() {
   return (
       <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: '#080d1c' }}>
 
-        {/* ============== COLUMNA IZQUIERDA: branding ============== */}
+
         <Box
             sx={{
               display: { xs: 'none', md: 'flex' },
@@ -107,7 +103,6 @@ export default function Login() {
           </Box>
         </Box>
 
-        {/* ============== COLUMNA DERECHA: formulario ============== */}
         <Box
             sx={{
               flex: 1,

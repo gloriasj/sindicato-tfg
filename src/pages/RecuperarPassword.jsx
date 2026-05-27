@@ -1,7 +1,3 @@
-// src/pages/RecuperarPassword.jsx
-// -------------------------------------------------------
-// Pantalla de recuperación de contraseña con estilo oscuro.
-// -------------------------------------------------------
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,7 +7,7 @@ import {
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { supabase } from '../lib/supabase';
 
-// --- ESTILOS COMPARTIDOS ---
+
 const cardStyle = {
   background: 'linear-gradient(180deg, #131c33 0%, #0c1428 100%)',
   borderRadius: 4,
