@@ -23,22 +23,24 @@ import { useAuth } from '../context/AuthContext';
 import { useNotificacion } from '../context/NotificacionContext';
 import DialogoConfirmacion from './DialogoConfirmacion';
 
-const TAMANO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const BUCKET = 'incidencias-adjuntos';
+const TAMANO_MAX_BYTES = 10 * 1024 * 1024; // limite de 10mb
+const BUCKET = 'incidencias-adjuntos'; //nombre carpeta raiz en el storage de supabase
 
 export default function AdjuntosIncidencia({ incidenciaId }) {
   const { profile } = useAuth();
   const { exito, error: notificarError } = useNotificacion();
 
-  const [archivos, setArchivos]   = useState([]);
+  const [archivos, setArchivos]   = useState([]); //lista local de fichheros vinculados
   const [cargando, setCargando]   = useState(true);
   const [subiendo, setSubiendo]   = useState(false);
-  const [aBorrar, setABorrar]     = useState(null);
+  const [aBorrar, setABorrar]     = useState(null); //guarda el archivo seleccionado temporalmente para borrar
   const [borrando, setBorrando]   = useState(false);
-  const inputFileRef = useRef(null);
+  const inputFileRef = useRef(null); //referencia oculta para disparar el selector de archivos
 
+  //cada vez que cambie la incidencia abierta se trae los archivos correspondientes
   useEffect(() => { cargarArchivos(); }, [incidenciaId]);
 
+  //consulta a la base de datos
   async function cargarArchivos() {
     setCargando(true);
     const { data, error } = await supabase
@@ -55,10 +57,11 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
     setCargando(false);
   }
 
+  //subida del archivo
   async function handleSubirArchivo(e) {
-    const archivo = e.target.files?.[0];
+    const archivo = e.target.files?.[0]; //se captura el archivo que eligio el usaurio
     if (!archivo) return;
-
+  //si el archivo pesa mas de 10mb se para el proceso
     if (archivo.size > TAMANO_MAX_BYTES) {
       notificarError(`El archivo no puede superar ${formatearTamano(TAMANO_MAX_BYTES)}`);
       e.target.value = '';
@@ -69,12 +72,11 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
 
     try {
       const extension = archivo.name.split('.').pop();
-      const rutaStorage =
-          `incidencia-${incidenciaId}/${Date.now()}-${Math.random()
+      const rutaStorage = `incidencia-${incidenciaId}/${Date.now()}-${Math.random()
               .toString(36)
               .slice(2, 8)}.${extension}`;
-      //PROCESO DE SUBIDA;
-      //1 Se guarda el archivo en el almacen fisico (bucket)
+      //proceso de subida
+      //se guarda el archivo en el almacen fisico bucket
       const { error: errSubida } = await supabase.storage
           .from(BUCKET)
           .upload(rutaStorage, archivo, {
