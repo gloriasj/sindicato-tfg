@@ -1,16 +1,6 @@
-// src/components/Logo.jsx
-// -------------------------------------------------------
-// Componente reutilizable para mostrar el logo del Portal
-// Sindical. Muestra el SVG + el nombre, con tres tamaños:
-// 'sm' (compacto), 'md' (por defecto) y 'lg' (grande).
-//
-// Uso:
-//   <Logo />
-//   <Logo size="lg" mostrarTexto={false} />
-// -------------------------------------------------------
 
 import { Box, Stack, Typography } from '@mui/material';
-
+//define los tres tamaños posibles
 const TAMANOS = {
   sm: { logo: 28, titulo: '0.95rem', subtitulo: '0.65rem' },
   md: { logo: 36, titulo: '1.1rem',  subtitulo: '0.7rem' },
@@ -26,6 +16,7 @@ export default function Logo({
   const dim = TAMANOS[size];
 
   return (
+      //organiza el codigo y el teto en fila o en columna
       <Stack
           direction={centrado ? 'column' : 'row'}
           spacing={centrado ? 1 : 1.5}

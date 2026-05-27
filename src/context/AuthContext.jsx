@@ -1,9 +1,7 @@
-// src/context/AuthContext.jsx
-// -------------------------------------------------------
 // Contexto global de autenticación.
 // Mantiene la sesión, el perfil del usuario y expone
 // las funciones login, registro y logout.
-// -------------------------------------------------------
+
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
@@ -59,12 +57,12 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     try {
-      // 1. Supabase comprueba la contraseña en su bóveda
+      // Supabase comprueba la contraseña en su bóveda
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) return { error };
 
-      // 2. EL PORTERO INTERCEPTOR
+      // EL PORTERO INTERCEPTOR
       if (data?.user) {
         const { data: profileData, error: profileError } = await supabase
             .from('profiles')
@@ -80,7 +78,7 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // Si todo está bien y es un usuario activo, le dejamos pasar
+      /*si todo esta bien y es un usuario activo se deja pasar*/
       return { error: null };
 
     } catch (err) {

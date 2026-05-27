@@ -97,6 +97,7 @@ export default function AdjuntosIncidencia({ incidenciaId }) {
           .select()
           .single();
       //3 red de seguridad, si falla la base de datos se saca esos archivos
+
       if (errInsert) {
         await supabase.storage.from(BUCKET).remove([rutaStorage]);
         throw errInsert;

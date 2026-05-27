@@ -1,4 +1,4 @@
-// src/lib/usePermisos.js
+
 
 import { useAuth } from '../context/AuthContext';
 
